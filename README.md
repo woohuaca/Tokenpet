@@ -220,7 +220,7 @@ V1 当前聚焦四件事：
 - `docs/v1-validation-2026-04-08-round-03.md`
   针对短周期重复启停回归的第三轮验证记录
 - `docs/v1-release-plan.md`
-  V1 发布位置、形式、节奏与门槛
+  当前版本路线、发布门槛与后续演进顺序
 - `docs/v1-dev-preview-package.md`
   `v0.1.0-dev-preview` 的发布包内容清单
 - `docs/v1-dev-preview-artifact-spec.md`
