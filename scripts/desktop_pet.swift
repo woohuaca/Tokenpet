@@ -3458,6 +3458,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
     let window: PetWindowPanel
     let contentView: PetContainerView
     let infoController = PetInfoViewController()
+    var visibilityRepairDelays: [TimeInterval] = [0.18, 0.75, 1.8]
     lazy var infoWindow: PetWindowPanel = {
         let panel = PetWindowPanel(
             contentRect: NSRect(x: 240, y: 180, width: 344, height: 388),
@@ -3567,10 +3568,12 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         window.level = .floating
         window.hasShadow = false
         window.hidesOnDeactivate = false
+        window.isReleasedWhenClosed = false
         window.isMovableByWindowBackground = true
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         window.contentView = contentView
         window.ignoresMouseEvents = false
+        window.alphaValue = 1
     }
 
     func wireActions() {
@@ -3588,8 +3591,10 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         store.claimSingleInstance()
         store.ensureBridgeRunning()
         NSApp.setActivationPolicy(.accessory)
+        installVisibilityObservers()
         snapWindowToVisibleFrame()
         revealWindow()
+        scheduleVisibilityRepairs()
 
         stateTimer = Timer.scheduledTimer(withTimeInterval: 45, repeats: true) { [weak self] _ in
             self?.backgroundTick()
@@ -3607,6 +3612,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        uninstallVisibilityObservers()
         persistWindowPosition()
         store.saveState(state)
         store.saveConfig(config)
@@ -3627,7 +3633,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         }
 
         guard let screen = currentScreens.first(where: { $0.visibleFrame.intersects(currentFrame) || $0.frame.contains(currentFrame.origin) })
-            ?? NSScreen.main
+            ?? preferredPresentationScreen()
             ?? currentScreens.first else {
             return
         }
@@ -3661,10 +3667,78 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         persistWindowPosition()
     }
 
+    func preferredPresentationScreen() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+    }
+
+    func installVisibilityObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVisibilityRelevantEvent),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVisibilityRelevantEvent),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleVisibilityRelevantEvent),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleVisibilityRelevantEvent),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
+    }
+
+    func uninstallVisibilityObservers() {
+        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+    }
+
+    @objc func handleVisibilityRelevantEvent(_ notification: Notification) {
+        snapWindowToVisibleFrame()
+        revealWindow()
+    }
+
+    func scheduleVisibilityRepairs() {
+        for delay in visibilityRepairDelays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self else { return }
+                self.snapWindowToVisibleFrame()
+                self.revealWindow()
+            }
+        }
+    }
+
     func revealWindow() {
+        let shouldRestoreAccessory = NSApp.activationPolicy() != .regular
+        if shouldRestoreAccessory {
+            NSApp.setActivationPolicy(.regular)
+        }
+
+        window.alphaValue = 1
+        window.level = .statusBar
+        window.order(.above, relativeTo: 0)
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        if shouldRestoreAccessory {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
     }
 
     func showInfoPanel() {

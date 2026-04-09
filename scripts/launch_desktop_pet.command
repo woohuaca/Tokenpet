@@ -32,8 +32,10 @@ wait_for_pid_file() {
   for ((i = 0; i < attempts; i++)); do
     if [[ -f "$pid_path" ]]; then
       candidate_pid="$(cat "$pid_path" 2>/dev/null | tr -d '[:space:]')"
-      if [[ -n "$candidate_pid" ]]; then
+      if [[ -n "$candidate_pid" ]] && kill -0 "$candidate_pid" >/dev/null 2>&1; then
         return 0
+      elif [[ -n "$candidate_pid" ]]; then
+        rm -f "$pid_path"
       fi
     fi
     sleep "$interval"
@@ -90,12 +92,22 @@ wait_for_process_exit "$BIN_PATH"
 rm -f "$PET_PID_PATH"
 
 sleep 1
-if ! open "$BIN_PATH" >/dev/null 2>&1; then
-  nohup "$BIN_PATH" >> "$PET_LOG_PATH" 2>&1 &
-fi
+open "$BIN_PATH" >/dev/null 2>&1 || true
 rm -f "$PET_PID_PATH"
 
 if wait_for_pid_file "$PET_PID_PATH" 25 0.2; then
+  exit 0
+fi
+
+nohup "$BIN_PATH" >> "$PET_LOG_PATH" 2>&1 &
+LAUNCH_PID="$!"
+
+if wait_for_pid_file "$PET_PID_PATH" 20 0.2; then
+  exit 0
+fi
+
+if [[ -n "$LAUNCH_PID" ]] && kill -0 "$LAUNCH_PID" >/dev/null 2>&1; then
+  echo "$LAUNCH_PID" > "$PET_PID_PATH"
   exit 0
 fi
 
