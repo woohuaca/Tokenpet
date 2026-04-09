@@ -65,6 +65,11 @@
 - `azai-token-pet-v1.0.0-public-share.zip`
 - `azai-token-pet-v1.0.0-codex-macos.zip`
 
+建议同时附上：
+
+- `docs/v1-github-release.md`
+- `docs/v1-release-checksums.md`
+
 ## 公开说明里建议直接写清楚的句子
 
 建议对外统一写成：
