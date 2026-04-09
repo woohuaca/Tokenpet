@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 160" role="img" aria-label="Azai Token Pet logo">
+  <rect width="420" height="160" rx="28" fill="#FFF7EA"/>
+  <g transform="translate(28 18)">
+    <circle cx="56" cy="64" r="40" fill="#FF7A59"/>
+    <circle cx="36" cy="34" r="12" fill="#FFB067"/>
+    <circle cx="76" cy="34" r="12" fill="#FFB067"/>
+    <circle cx="43" cy="60" r="5" fill="#1F2937"/>
+    <circle cx="69" cy="60" r="5" fill="#1F2937"/>
+    <path d="M43 80c8 7 18 7 26 0" fill="none" stroke="#1F2937" stroke-linecap="round" stroke-width="5"/>
+    <circle cx="95" cy="22" r="15" fill="#2FBF71"/>
+    <path d="M95 14v16M87 22h16" stroke="#FFF" stroke-linecap="round" stroke-width="4"/>
+  </g>
+  <text x="150" y="72" fill="#1F2937" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700">Azai Token Pet</text>
+  <text x="150" y="106" fill="#6B7280" font-family="Helvetica, Arial, sans-serif" font-size="18">Turn AI token spend into a living companion.</text>
+</svg>

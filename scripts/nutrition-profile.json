@@ -1,0 +1,127 @@
+{
+  "coding": {
+    "label": "开发",
+    "satiety": 8,
+    "energy": 5,
+    "focus": 10,
+    "mood": 4,
+    "hygiene": 0,
+    "health": 4,
+    "bond": 5,
+    "growth": 8,
+    "toxicity": 1,
+    "archetypes": {
+      "builder": 3,
+      "scholar": 1
+    }
+  },
+  "writing": {
+    "label": "写作",
+    "satiety": 6,
+    "energy": 4,
+    "focus": 7,
+    "mood": 5,
+    "hygiene": 0,
+    "health": 4,
+    "bond": 4,
+    "growth": 7,
+    "toxicity": 1,
+    "archetypes": {
+      "scholar": 2,
+      "builder": 1
+    }
+  },
+  "research": {
+    "label": "研究",
+    "satiety": 5,
+    "energy": 2,
+    "focus": 9,
+    "mood": 4,
+    "hygiene": -1,
+    "health": 3,
+    "bond": 3,
+    "growth": 9,
+    "toxicity": 2,
+    "archetypes": {
+      "scholar": 3
+    }
+  },
+  "review": {
+    "label": "评审",
+    "satiety": 6,
+    "energy": 3,
+    "focus": 7,
+    "mood": 3,
+    "hygiene": 2,
+    "health": 5,
+    "bond": 3,
+    "growth": 6,
+    "toxicity": 1,
+    "archetypes": {
+      "captain": 2,
+      "scholar": 1
+    }
+  },
+  "planning": {
+    "label": "规划",
+    "satiety": 4,
+    "energy": 3,
+    "focus": 6,
+    "mood": 4,
+    "hygiene": 1,
+    "health": 4,
+    "bond": 4,
+    "growth": 6,
+    "toxicity": 1,
+    "archetypes": {
+      "captain": 3
+    }
+  },
+  "meeting": {
+    "label": "会议",
+    "satiety": 2,
+    "energy": -1,
+    "focus": 1,
+    "mood": -1,
+    "hygiene": -2,
+    "health": 0,
+    "bond": 1,
+    "growth": 2,
+    "toxicity": 5,
+    "archetypes": {
+      "social": 2,
+      "chaos": 2
+    }
+  },
+  "support": {
+    "label": "支持",
+    "satiety": 3,
+    "energy": 0,
+    "focus": 4,
+    "mood": 2,
+    "hygiene": -1,
+    "health": 2,
+    "bond": 5,
+    "growth": 4,
+    "toxicity": 3,
+    "archetypes": {
+      "social": 3,
+      "captain": 1
+    }
+  },
+  "idle": {
+    "label": "空转",
+    "satiety": 1,
+    "energy": -3,
+    "focus": -4,
+    "mood": 0,
+    "hygiene": -4,
+    "health": -3,
+    "bond": -2,
+    "growth": 0,
+    "toxicity": 8,
+    "archetypes": {
+      "chaos": 4
+    }
+  }
+}

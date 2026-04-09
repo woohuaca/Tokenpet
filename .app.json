@@ -1,0 +1,61 @@
+{
+  "apps": {
+    "codex": {
+      "status": "released",
+      "surfaces": [
+        "sidebar",
+        "plugin-card",
+        "context-panel"
+      ],
+      "eventSources": [
+        "token_usage",
+        "session_summary",
+        "task_tag"
+      ]
+    },
+    "cursor": {
+      "status": "adapter-planned",
+      "surfaces": [
+        "sidebar",
+        "status-bar",
+        "webview"
+      ],
+      "eventSources": [
+        "chat_usage",
+        "workspace_context",
+        "command"
+      ]
+    },
+    "cc": {
+      "status": "adapter-planned",
+      "surfaces": [
+        "panel",
+        "timeline",
+        "notification"
+      ],
+      "eventSources": [
+        "conversation_usage",
+        "task_type",
+        "session_summary"
+      ]
+    },
+    "prototype": {
+      "status": "ready",
+      "entry": "./demo/codex-launchpad.html",
+      "purpose": "codex-first-launchpad",
+      "surfaces": [
+        "browser",
+        "webview"
+      ]
+    },
+    "desktopCompanion": {
+      "status": "released",
+      "entry": "./start.command",
+      "runtime": "swift-appkit",
+      "surfaces": [
+        "desktop-floating-window",
+        "always-on-top"
+      ]
+    }
+  }
+}

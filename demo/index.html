@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>阿在 Token Pet Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">AZAI TOKEN PET</p>
+          <h1>让花掉的 Token，养出一只有脾气的电子宠物</h1>
+          <p class="hero-text">
+            这不是 Token 报表，而是一套会反馈你的工作饮食结构的虚拟生命系统。
+            开发像高蛋白，研究像脑力餐，空转像垃圾食品。你喂它什么，它就长成什么。
+          </p>
+        </div>
+        <div class="hero-badges">
+          <span>自动喂养</span>
+          <span>任务营养学</span>
+          <span>成长进化</span>
+          <span>可接 Codex / CC / Cursor</span>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="pet-panel panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">宠物状态</p>
+              <h2 id="pet-name">阿在小兽</h2>
+            </div>
+            <div class="status-pill" id="mood-pill">steady</div>
+          </div>
+
+          <div class="pet-stage">
+            <div class="pet-scene" id="pet-scene" data-form="neutral" data-mood="steady">
+              <div class="pet-halo"></div>
+              <div class="pet-body">
+                <div class="pet-ears"></div>
+                <div class="pet-face">
+                  <span class="eye left"></span>
+                  <span class="eye right"></span>
+                  <span class="mouth"></span>
+                </div>
+                <div class="pet-belly"></div>
+              </div>
+              <div class="pet-token">+T</div>
+            </div>
+
+            <div class="pet-meta">
+              <div class="meta-card">
+                <span class="meta-label">阶段</span>
+                <strong id="stage-label">egg</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">形态</span>
+                <strong id="form-label">neutral</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">年龄</span>
+                <strong id="age-label">0h</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-grid" id="stats-grid"></div>
+
+          <div class="warnings">
+            <p class="panel-kicker">提醒</p>
+            <ul id="warning-list"></ul>
+          </div>
+        </section>
+
+        <section class="control-panel panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">今天喂什么</p>
+              <h2>任务营养输入</h2>
+            </div>
+          </div>
+
+          <form id="feed-form" class="feed-form">
+            <label>
+              <span>任务类型</span>
+              <select id="task-type"></select>
+            </label>
+
+            <label>
+              <span>产出质量</span>
+              <div class="segmented" id="quality-group">
+                <button type="button" data-quality="breakthrough">突破</button>
+                <button type="button" class="is-active" data-quality="solid">扎实</button>
+                <button type="button" data-quality="partial">部分完成</button>
+                <button type="button" data-quality="waste">浪费</button>
+              </div>
+            </label>
+
+            <label>
+              <span>本次 Token 消耗</span>
+              <input id="token-slider" type="range" min="500" max="30000" step="100" value="4200" />
+              <div class="slider-readout">
+                <strong id="token-value">4200</strong>
+                <small>Token</small>
+              </div>
+            </label>
+
+            <div class="meal-preview">
+              <p class="panel-kicker">本餐预估</p>
+              <div id="meal-preview-grid" class="preview-grid"></div>
+            </div>
+
+            <button class="primary-button" type="submit">喂养宠物</button>
+          </form>
+
+          <div class="care-actions">
+            <button type="button" data-action="clean">清理残渣</button>
+            <button type="button" data-action="play">陪它玩耍</button>
+            <button type="button" data-action="sleep">安排睡眠</button>
+            <button type="button" data-action="tick">时间流逝 3 小时</button>
+          </div>
+        </section>
+
+        <section class="intel-panel panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">进化判断</p>
+              <h2>当前更像哪种宠物</h2>
+            </div>
+          </div>
+
+          <div id="archetype-list" class="archetype-list"></div>
+
+          <div class="narrative-card">
+            <p class="panel-kicker">系统解读</p>
+            <p id="narrative-text"></p>
+          </div>
+
+          <div class="narrative-card">
+            <p class="panel-kicker">最近饮食</p>
+            <div id="meal-log" class="meal-log"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

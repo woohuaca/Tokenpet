@@ -1,0 +1,7 @@
+runtime/
+builds/
+
+.DS_Store
+*.log
+*.pid
+*.swp
