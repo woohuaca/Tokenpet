@@ -222,7 +222,9 @@ V1 当前聚焦四件事：
 - `docs/v1-release-plan.md`
   当前版本路线、发布门槛与后续演进顺序
 - `docs/v1-core-loop-optimization-plan.md`
-  从 Token 到情绪互动的整条核心环节持续优化方案
+  生命代谢线：从 Token 到生长养成的持续优化方案
+- `docs/v1-emotional-value-optimization-plan.md`
+  情绪价值线：从第一印象到个体关系感的持续优化方案
 - `docs/v1-1-requirement-package.md`
   `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
