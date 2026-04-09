@@ -3458,7 +3458,8 @@ final class PetAppController: NSObject, NSApplicationDelegate {
     let window: PetWindowPanel
     let contentView: PetContainerView
     let infoController = PetInfoViewController()
-    var visibilityRepairDelays: [TimeInterval] = [0.18, 0.75, 1.8]
+    var visibilityRepairDelays: [TimeInterval] = [0.35, 1.1]
+    var lastSoftRevealAt: TimeInterval = 0
     lazy var infoWindow: PetWindowPanel = {
         let panel = PetWindowPanel(
             contentRect: NSRect(x: 240, y: 180, width: 344, height: 388),
@@ -3593,7 +3594,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         installVisibilityObservers()
         snapWindowToVisibleFrame()
-        revealWindow()
+        forceRevealWindow()
         scheduleVisibilityRepairs()
 
         stateTimer = Timer.scheduledTimer(withTimeInterval: 45, repeats: true) { [weak self] _ in
@@ -3678,12 +3679,6 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleVisibilityRelevantEvent),
-            name: NSApplication.didBecomeActiveNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleVisibilityRelevantEvent),
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
@@ -3708,7 +3703,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
 
     @objc func handleVisibilityRelevantEvent(_ notification: Notification) {
         snapWindowToVisibleFrame()
-        revealWindow()
+        softRevealWindow()
     }
 
     func scheduleVisibilityRepairs() {
@@ -3716,19 +3711,19 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self else { return }
                 self.snapWindowToVisibleFrame()
-                self.revealWindow()
+                self.softRevealWindow()
             }
         }
     }
 
-    func revealWindow() {
+    func forceRevealWindow() {
         let shouldRestoreAccessory = NSApp.activationPolicy() != .regular
         if shouldRestoreAccessory {
             NSApp.setActivationPolicy(.regular)
         }
 
         window.alphaValue = 1
-        window.level = .statusBar
+        window.level = .floating
         window.order(.above, relativeTo: 0)
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
@@ -3738,6 +3733,22 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                 NSApp.setActivationPolicy(.accessory)
             }
+        }
+    }
+
+    func softRevealWindow() {
+        let now = Date().timeIntervalSince1970
+        if now - lastSoftRevealAt < 0.6 {
+            return
+        }
+        lastSoftRevealAt = now
+
+        window.alphaValue = 1
+        window.level = .floating
+        if !window.isVisible {
+            window.orderFrontRegardless()
+        } else {
+            window.orderFront(nil)
         }
     }
 
