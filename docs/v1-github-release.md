@@ -66,6 +66,7 @@
 
 - 仓库首页：`README.md`
 - 公开分发说明：`PUBLIC_DISTRIBUTION.md`
+- 最短安装说明：`docs/v1-release-install-quickstart.md`
 - 隐私说明：`PRIVACY.md`
 - 条款说明：`TERMS.md`
 
