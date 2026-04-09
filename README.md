@@ -229,6 +229,8 @@ V1 当前聚焦四件事：
   双线并进的 `P0 / P1 / P2` 版本级优先级看板
 - `docs/v1-1-development-task-board.md`
   `v1.1.x` 的双线开发任务清单、开发顺序与最小交付面
+- `docs/v1-1-first-batch-implementation-plan.md`
+  `v1.1.x` 第一批三项 `P0` 任务的实现子项与协同接口
 - `docs/v1-1-requirement-package.md`
   `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
