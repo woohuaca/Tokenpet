@@ -82,6 +82,10 @@ V1 当前聚焦四件事：
 - 当前正式范围仍限定在 `Codex + macOS`
 - 这不等于已经进入公开插件商店
 
+当前公开源码仓库：
+
+- `https://github.com/woohuaca/Tokenpet`
+
 ## 当前目录
 
 - `.codex-plugin/plugin.json`

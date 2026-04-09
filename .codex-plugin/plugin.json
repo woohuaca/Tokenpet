@@ -2,6 +2,8 @@
   "name": "azai-token-pet",
   "version": "1.0.0",
   "description": "把 AI Token 消耗转化为可喂养、可成长、可进化的桌面电子宠物，并作为 Codex 首发正式版发布。",
+  "repository": "https://github.com/woohuaca/Tokenpet",
+  "homepage": "https://github.com/woohuaca/Tokenpet",
   "author": {
     "name": "阿在项目组"
   },
@@ -19,6 +21,9 @@
     "longDescription": "阿在 Token Pet 把用户在 Codex 等 AI 工作流中的 Token 消耗转成宠物的食物、情绪、成长和进化反馈，让成本感知、任务结构和长期投入变得可见、可玩、可优化。当前版本以 Codex + macOS companion 为正式首发范围：安装到本地 Codex 后，可直接从插件入口使用“启动阿在 Token Pet 桌宠” starter prompt，或运行插件根目录里的 start.command 启动桌宠；停止可运行 stop.command，重置可运行 reset.command。",
     "developerName": "阿在项目组",
     "category": "Productivity",
+    "websiteURL": "https://github.com/woohuaca/Tokenpet",
+    "privacyPolicyURL": "https://github.com/woohuaca/Tokenpet/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/woohuaca/Tokenpet/blob/main/TERMS.md",
     "capabilities": [
       "Interactive",
       "Visualize",

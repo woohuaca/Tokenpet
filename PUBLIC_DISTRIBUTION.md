@@ -13,6 +13,10 @@
 2. 发布公开下载包
 3. 让用户按本地 marketplace 或本地安装方式接入 Codex
 
+当前公开仓库：
+
+- `https://github.com/woohuaca/Tokenpet`
+
 ## 当前推荐的公开分发路径
 
 ### 方案一：公开仓库 + 发布包
@@ -55,6 +59,11 @@
   面向 Codex 首发正式版的标准包
 - `builds/azai-token-pet-v1.0.0-public-share.zip`
   面向公开下载分享的精简分发包
+
+如果要让 GitHub 仓库访问者直接下载，下一步建议在 GitHub Releases 中上传：
+
+- `azai-token-pet-v1.0.0-public-share.zip`
+- `azai-token-pet-v1.0.0-codex-macos.zip`
 
 ## 公开说明里建议直接写清楚的句子
 
