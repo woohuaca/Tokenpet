@@ -1,4 +1,59 @@
-# 阿在 Token Pet 插件说明
+# 阿在 Token Pet
+
+阿在 Token Pet 是一只把 AI 工作流中的 Token 消耗，变成可喂养、可成长、可进化反馈的桌面电子宠物。
+
+当前首发范围：
+
+- `Codex-first`
+- `macOS companion`
+- `v1.0.0` 正式首发版
+
+## 快速入口
+
+- 仓库：`https://github.com/woohuaca/Tokenpet`
+- 公开下载包：`builds/azai-token-pet-v1.0.0-public-share.zip`
+- Codex 正式版包：`builds/azai-token-pet-v1.0.0-codex-macos.zip`
+- 公开分发说明：`PUBLIC_DISTRIBUTION.md`
+- 隐私说明：`PRIVACY.md`
+- 条款说明：`TERMS.md`
+
+## 三句话理解它
+
+1. 它吃的不是普通饲料，而是你真实花掉的 Token。
+2. 它长得怎样，不只看花了多少，还看花在哪类工作、长期饮食结构和你怎么回应它。
+3. 它不是一个统计面板，而是一只会在桌边慢慢长出关系感的小兽。
+
+## 适合谁
+
+- 长时间在 Codex 里工作的人
+- 想把 Token 消耗变成更直观反馈的人
+- 愿意在 macOS 上运行本地桌宠 companion 的人
+
+## 当前发布边界
+
+- 已经按正式版口径进入 Codex 发布链
+- 当前正式范围仍限定在 `Codex + macOS`
+- 这不等于已经进入官方公共插件商店
+
+## 最快安装
+
+### 方式一：从下载包开始
+
+1. 下载 `azai-token-pet-v1.0.0-public-share.zip` 或 `azai-token-pet-v1.0.0-codex-macos.zip`
+2. 解压后进入插件目录
+3. 运行 `start.command`
+
+### 方式二：从源码仓库开始
+
+1. 克隆 `https://github.com/woohuaca/Tokenpet`
+2. 进入仓库根目录
+3. 运行 `start.command`
+
+## 系统要求
+
+- macOS
+- `xcrun`
+- `python3`
 
 ## 这个插件是什么
 
@@ -75,16 +130,6 @@ V1 当前聚焦四件事：
 - `Codex-first`
 - `macOS companion`
 - `Codex 范围内正式首发`
-
-这里的“正式发布”有边界：
-
-- 已经按正式版口径进入 Codex 发布链
-- 当前正式范围仍限定在 `Codex + macOS`
-- 这不等于已经进入公开插件商店
-
-当前公开源码仓库：
-
-- `https://github.com/woohuaca/Tokenpet`
 
 ## 当前目录
 
