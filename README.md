@@ -225,6 +225,8 @@ V1 当前聚焦四件事：
   生命代谢线：从 Token 到生长养成的持续优化方案
 - `docs/v1-emotional-value-optimization-plan.md`
   情绪价值线：从第一印象到个体关系感的持续优化方案
+- `docs/v1-dual-track-priority-board.md`
+  双线并进的 `P0 / P1 / P2` 版本级优先级看板
 - `docs/v1-1-requirement-package.md`
   `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
