@@ -15,6 +15,7 @@
 - Codex 正式版包：`builds/azai-token-pet-v1.0.0-codex-macos.zip`
 - 公开分发说明：`PUBLIC_DISTRIBUTION.md`
 - 最短安装说明：`docs/v1-release-install-quickstart.md`
+- 5 分钟发版清单：`docs/v1-release-5min-checklist.md`
 - 隐私说明：`PRIVACY.md`
 - 条款说明：`TERMS.md`
 - 问题反馈：GitHub Issues

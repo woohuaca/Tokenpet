@@ -70,6 +70,7 @@
 - `docs/v1-github-release.md`
 - `docs/v1-release-checksums.md`
 - `docs/v1-release-install-quickstart.md`
+- `docs/v1-release-5min-checklist.md`
 
 ## 公开说明里建议直接写清楚的句子
 
