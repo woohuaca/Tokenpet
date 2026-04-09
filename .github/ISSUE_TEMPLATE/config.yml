@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Public Distribution Notes
+    url: https://github.com/woohuaca/Tokenpet/blob/main/PUBLIC_DISTRIBUTION.md
+    about: 先查看公开分发范围、下载方式和当前边界

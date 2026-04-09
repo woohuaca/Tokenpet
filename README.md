@@ -16,6 +16,7 @@
 - 公开分发说明：`PUBLIC_DISTRIBUTION.md`
 - 隐私说明：`PRIVACY.md`
 - 条款说明：`TERMS.md`
+- 问题反馈：GitHub Issues
 
 ## 三句话理解它
 
@@ -28,6 +29,15 @@
 - 长时间在 Codex 里工作的人
 - 想把 Token 消耗变成更直观反馈的人
 - 愿意在 macOS 上运行本地桌宠 companion 的人
+
+## 反馈入口
+
+如果你下载后遇到问题，建议直接通过 GitHub Issues 反馈。
+
+当前仓库已经准备了：
+
+- `Bug Report`
+- `Feature Request`
 
 ## 当前发布边界
 
