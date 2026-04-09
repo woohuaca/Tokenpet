@@ -221,6 +221,8 @@ V1 当前聚焦四件事：
   针对短周期重复启停回归的第三轮验证记录
 - `docs/v1-release-plan.md`
   当前版本路线、发布门槛与后续演进顺序
+- `docs/v1-1-requirement-package.md`
+  `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
   `v0.1.0-dev-preview` 的发布包内容清单
 - `docs/v1-dev-preview-artifact-spec.md`
