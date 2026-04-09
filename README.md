@@ -233,6 +233,8 @@ V1 当前聚焦四件事：
   `v1.1.x` 第一批三项 `P0` 任务的实现子项与协同接口
 - `docs/v1-1-state-definition-table.md`
   `v1.1.x` 第一批 7 个关键状态的动作、特效、文案统一定义表
+- `docs/v1-1-state-copy-candidates.md`
+  `v1.1.x` 第一批 7 个关键状态的文案候选表与语气建议
 - `docs/v1-1-requirement-package.md`
   `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
