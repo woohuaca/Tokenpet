@@ -91,6 +91,12 @@ struct PetState: Codable {
     var heavyImpactCount: Int?
     var affinityReleaseCount: Int?
     var agitationReleaseCount: Int?
+    var activeFeedbackKey: String?
+    var activeFeedbackSource: String?
+    var activeFeedbackAt: Double?
+    var activeFeedbackDuration: Double?
+    var activeFeedbackPriority: Int?
+    var lastResolvedRequestOutcome: String?
 }
 
 struct StageInfo {
@@ -117,6 +123,13 @@ struct ImpactFeedback {
     let tier: Int
     let valence: String
     let age: Double
+}
+
+struct ActiveFeedback {
+    let key: String
+    let source: String
+    let age: Double
+    let priority: Int
 }
 
 struct InteractionRequestProfile {
@@ -328,7 +341,13 @@ let defaultState = PetState(
     mediumImpactCount: 0,
     heavyImpactCount: 0,
     affinityReleaseCount: 0,
-    agitationReleaseCount: 0
+    agitationReleaseCount: 0,
+    activeFeedbackKey: nil,
+    activeFeedbackSource: nil,
+    activeFeedbackAt: nil,
+    activeFeedbackDuration: nil,
+    activeFeedbackPriority: nil,
+    lastResolvedRequestOutcome: "none"
 )
 
 let defaultConfig = PetConfig(
@@ -732,9 +751,117 @@ func currentImpactFeedback(_ state: PetState) -> ImpactFeedback? {
     )
 }
 
+func currentActiveFeedback(_ state: PetState, now: Double = Date().timeIntervalSince1970) -> ActiveFeedback? {
+    guard let key = state.activeFeedbackKey,
+          let source = state.activeFeedbackSource,
+          let at = state.activeFeedbackAt,
+          let duration = state.activeFeedbackDuration,
+          let priority = state.activeFeedbackPriority else {
+        return nil
+    }
+    let age = now - at
+    guard age >= 0, age < duration else { return nil }
+    return ActiveFeedback(key: key, source: source, age: age, priority: priority)
+}
+
+func clearActiveFeedback(_ state: inout PetState) {
+    state.activeFeedbackKey = nil
+    state.activeFeedbackSource = nil
+    state.activeFeedbackAt = nil
+    state.activeFeedbackDuration = nil
+    state.activeFeedbackPriority = nil
+}
+
+func clearExpiredFeedback(_ state: inout PetState, now: Double = Date().timeIntervalSince1970) {
+    guard state.activeFeedbackKey != nil else { return }
+    guard currentActiveFeedback(state, now: now) == nil else { return }
+    clearActiveFeedback(&state)
+}
+
+func canOverrideFeedback(_ state: PetState, withPriority newPriority: Int, at now: Double = Date().timeIntervalSince1970) -> Bool {
+    guard let feedback = currentActiveFeedback(state, now: now) else { return true }
+    return newPriority >= feedback.priority
+}
+
+@discardableResult
+func setActiveFeedback(
+    _ state: inout PetState,
+    key: String,
+    source: String,
+    priority: Int,
+    duration: Double,
+    now: Double = Date().timeIntervalSince1970,
+    resolvedOutcome: String? = nil,
+    force: Bool = false
+) -> Bool {
+    clearExpiredFeedback(&state, now: now)
+    if !force && !canOverrideFeedback(state, withPriority: priority, at: now) {
+        return false
+    }
+    state.activeFeedbackKey = key
+    state.activeFeedbackSource = source
+    state.activeFeedbackAt = now
+    state.activeFeedbackDuration = duration
+    state.activeFeedbackPriority = priority
+    if let resolvedOutcome {
+        state.lastResolvedRequestOutcome = resolvedOutcome
+    }
+    return true
+}
+
 func bubbleFeedbackStyle(_ state: PetState) -> BubbleFeedbackStyle {
     let activity = currentActivityText(state)
     let ignoreLevel = currentRequestIgnoreLevel(state)
+    if let feedback = currentActiveFeedback(state) {
+        switch feedback.key {
+        case "bond_complete":
+            return BubbleFeedbackStyle(
+                badge: "认主完成",
+                accentColor: NSColor(calibratedRed: 0.96, green: 0.72, blue: 0.31, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.95, green: 0.82, blue: 0.60, alpha: 0.98),
+                fillColor: NSColor(calibratedRed: 1.0, green: 0.98, blue: 0.93, alpha: 0.96),
+                requestColor: NSColor(calibratedRed: 0.69, green: 0.38, blue: 0.10, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.42, green: 0.28, blue: 0.14, alpha: 1.0),
+                accentWidth: 62,
+                tailShift: 0
+            )
+        case "interaction_offbeat":
+            return BubbleFeedbackStyle(
+                badge: "拍偏了一点",
+                accentColor: NSColor(calibratedRed: 0.90, green: 0.54, blue: 0.24, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.95, green: 0.82, blue: 0.70, alpha: 0.98),
+                fillColor: NSColor(calibratedRed: 1.0, green: 0.98, blue: 0.95, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.63, green: 0.32, blue: 0.12, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.40, green: 0.27, blue: 0.18, alpha: 1.0),
+                accentWidth: 42,
+                tailShift: 7
+            )
+        case "request_missed_twice":
+            return BubbleFeedbackStyle(
+                badge: "等拍失落",
+                accentColor: NSColor(calibratedRed: 0.63, green: 0.69, blue: 0.80, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.83, green: 0.86, blue: 0.92, alpha: 0.96),
+                fillColor: NSColor(calibratedRed: 0.98, green: 0.99, blue: 1.0, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.41, green: 0.49, blue: 0.60, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.34, green: 0.38, blue: 0.46, alpha: 1.0),
+                accentWidth: 34,
+                tailShift: -8
+            )
+        case "request_missed_once":
+            return BubbleFeedbackStyle(
+                badge: "等拍落空",
+                accentColor: NSColor(calibratedRed: 0.82, green: 0.63, blue: 0.34, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.93, green: 0.86, blue: 0.74, alpha: 0.96),
+                fillColor: NSColor(calibratedRed: 1.0, green: 0.99, blue: 0.96, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.57, green: 0.39, blue: 0.18, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.39, green: 0.31, blue: 0.22, alpha: 1.0),
+                accentWidth: 36,
+                tailShift: -4
+            )
+        default:
+            break
+        }
+    }
 
     if let impact = currentImpactFeedback(state) {
         if impact.valence == "bond" {
@@ -1700,6 +1827,7 @@ func currentRequestAge(_ state: PetState) -> Double {
 
 func applyMissedRequestFeedback(_ state: inout PetState, profile: InteractionRequestProfile) -> String? {
     guard profile.actionable else { return nil }
+    let now = Date().timeIntervalSince1970
     let age = currentRequestAge(state)
     let level = currentRequestIgnoreLevel(state)
     guard age >= 12 else { return nil }
@@ -1709,6 +1837,7 @@ func applyMissedRequestFeedback(_ state: inout PetState, profile: InteractionReq
         if profile.desiredValence == "affinity" {
             state.mood = clamp(state.mood - 3)
             state.bond = clamp(state.bond - 1.5)
+            _ = setActiveFeedback(&state, key: "request_missed_once", source: "background", priority: 60, duration: 2.8, now: now, resolvedOutcome: "missed_once")
             if dominantGrowthTendency(state).title == "细养型" {
                 state.currentActivity = "悄悄贴回边上继续等"
                 state.lastCareSummary = "它轻轻往边上贴了贴，像是还想再等你一下"
@@ -1722,6 +1851,7 @@ func applyMissedRequestFeedback(_ state: inout PetState, profile: InteractionReq
         }
 
         state.agitationEnergy = clamp(currentAgitationEnergy(state) + 6)
+        _ = setActiveFeedback(&state, key: "request_missed_once", source: "background", priority: 60, duration: 2.8, now: now, resolvedOutcome: "missed_once")
         if dominantGrowthTendency(state).title == "胀仓型" {
             state.currentActivity = "抖了抖毛，把闷劲压回去"
             state.lastCareSummary = "它想把闷着那口劲放掉，却又自己压回去了"
@@ -1740,6 +1870,7 @@ func applyMissedRequestFeedback(_ state: inout PetState, profile: InteractionReq
         state.mood = clamp(state.mood - 5)
         state.bond = clamp(state.bond - 2.5)
         state.pettingNeed = clamp(currentPettingNeed(state) + 12)
+        _ = setActiveFeedback(&state, key: "request_missed_twice", source: "background", priority: 65, duration: 3.4, now: now, resolvedOutcome: "missed_twice")
         state.currentActivity = "背过身自己缩成一团"
         state.lastCareSummary = "它等到有点失落，干脆自己缩成一团消化情绪"
         appendFoodLog(&state, entry: "等拍失落：缩成一团自己消化")
@@ -1748,6 +1879,7 @@ func applyMissedRequestFeedback(_ state: inout PetState, profile: InteractionReq
 
     state.agitationEnergy = clamp(currentAgitationEnergy(state) + 10)
     state.toxicity = clamp(state.toxicity + 3)
+    _ = setActiveFeedback(&state, key: "request_missed_twice", source: "background", priority: 65, duration: 3.4, now: now, resolvedOutcome: "missed_twice")
     state.currentActivity = "抖着毛自己消化躁劲"
     state.lastCareSummary = "它没等到想要的那一下，只能自己抖毛硬消化躁劲"
     appendFoodLog(&state, entry: "等拍别扭：自己抖毛消化躁劲")
@@ -1758,6 +1890,8 @@ func applyOffBeatInteractionFeedback(_ state: inout PetState, profile: Interacti
     guard profile.actionable, actualTier > 0 else { return nil }
     let matched = profile.desiredTier == actualTier && profile.desiredValence == actualValence
     guard !matched else { return nil }
+    let now = Date().timeIntervalSince1970
+    _ = setActiveFeedback(&state, key: "interaction_offbeat", source: "interaction", priority: 70, duration: 2.0, now: now, resolvedOutcome: "offbeat")
 
     if profile.desiredValence == "affinity" {
         state.mood = clamp(state.mood - 1.5)
@@ -1966,6 +2100,12 @@ final class PetStore {
         next.heavyImpactCount = next.heavyImpactCount ?? 0
         next.affinityReleaseCount = next.affinityReleaseCount ?? 0
         next.agitationReleaseCount = next.agitationReleaseCount ?? 0
+        next.activeFeedbackKey = next.activeFeedbackKey ?? nil
+        next.activeFeedbackSource = next.activeFeedbackSource ?? nil
+        next.activeFeedbackAt = next.activeFeedbackAt ?? nil
+        next.activeFeedbackDuration = next.activeFeedbackDuration ?? nil
+        next.activeFeedbackPriority = next.activeFeedbackPriority ?? nil
+        next.lastResolvedRequestOutcome = next.lastResolvedRequestOutcome ?? "none"
         return next
     }
 
@@ -3903,6 +4043,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
 
     func performInteraction() {
         let now = Date().timeIntervalSince1970
+        clearExpiredFeedback(&state, now: now)
         let last = state.lastInteractionAt ?? 0
         let combo = now - last < 6 ? min((state.petCombo ?? 0) + 1, 6) : 1
         let birthPending = isBirthBondPending(state)
@@ -3946,6 +4087,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             state.lastImpactTier = 4
             state.lastImpactValence = "bond"
             state.lastImpactAt = now
+            _ = setActiveFeedback(&state, key: "bond_complete", source: "interaction", priority: 90, duration: 4.2, now: now, resolvedOutcome: "bond_complete", force: true)
             addReward(&state, amount: 2, reason: "完成了第一次认主")
             appendFoodLog(&state, entry: "第一次认主：它记住了你的手感")
             finalMessage = "\(petDisplayName(state)) 轻轻贴过来，把你的手感记进了自己身体里。现在，它正式开始跟着你一起长大了。"
@@ -4026,6 +4168,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
     }
 
     func refresh(message: String) {
+        clearExpiredFeedback(&state)
         let previousRequest = state.currentRequest
         state.stage = deriveStage(state.growth)
         state.form = deriveForm(state.archetypeScore)
