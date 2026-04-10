@@ -243,6 +243,8 @@ V1 当前聚焦四件事：
   `v1.1.x` 第一批 7 个关键状态到代码字段、触发入口、反馈入口与验证入口的映射表
 - `docs/v1-1-state-field-and-event-schema.md`
   `v1.1.x` 第一批状态继续沿用哪些派生字段、哪些需要补显式事件字段的 schema
+- `docs/v1-1-schema-code-refactor-task-list.md`
+  `v1.1.x` 把状态 schema 真正落到 `desktop_pet.swift` 的代码改造任务单与推荐顺序
 - `docs/v1-1-requirement-package.md`
   `v1.1.x` 的五模块需求包与验收标准
 - `docs/v1-dev-preview-package.md`
