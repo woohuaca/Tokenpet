@@ -778,6 +778,17 @@ func clearExpiredFeedback(_ state: inout PetState, now: Double = Date().timeInte
     clearActiveFeedback(&state)
 }
 
+func pruneInvalidFeedback(_ state: inout PetState) {
+    guard let key = state.activeFeedbackKey else { return }
+    if key == "request_waiting" && state.currentRequest == nil {
+        clearActiveFeedback(&state)
+        return
+    }
+    if key == "birth_intro" && !isBirthBondPending(state) {
+        clearActiveFeedback(&state)
+    }
+}
+
 func canOverrideFeedback(_ state: PetState, withPriority newPriority: Int, at now: Double = Date().timeIntervalSince1970) -> Bool {
     guard let feedback = currentActiveFeedback(state, now: now) else { return true }
     return newPriority >= feedback.priority
@@ -823,6 +834,17 @@ func bubbleFeedbackStyle(_ state: PetState) -> BubbleFeedbackStyle {
                 requestColor: NSColor(calibratedRed: 0.69, green: 0.38, blue: 0.10, alpha: 1.0),
                 logColor: NSColor(calibratedRed: 0.42, green: 0.28, blue: 0.14, alpha: 1.0),
                 accentWidth: 62,
+                tailShift: 0
+            )
+        case "birth_intro":
+            return BubbleFeedbackStyle(
+                badge: "初醒中",
+                accentColor: NSColor(calibratedRed: 0.96, green: 0.72, blue: 0.31, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.94, green: 0.84, blue: 0.67, alpha: 0.96),
+                fillColor: NSColor(calibratedRed: 1.0, green: 0.99, blue: 0.95, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.66, green: 0.38, blue: 0.12, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.41, green: 0.29, blue: 0.14, alpha: 1.0),
+                accentWidth: 44,
                 tailShift: 0
             )
         case "interaction_offbeat":
@@ -3702,22 +3724,24 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         state.birthNarrative = blueprint.birthNarrative
         state.styleVector = blueprint.styleVector
         state.identitySeed = blueprint.seed
-        state.identityGeneratedAt = Date().timeIntervalSince1970
+        let now = Date().timeIntervalSince1970
+        state.identityGeneratedAt = now
         state.identityVersion = identityGeneratorVersion
         if needsIdentity {
             state.firstBondAt = nil
             state.affinityEnergy = max(currentAffinityEnergy(state), 18)
             state.currentRequest = "想先记住你的手感"
-            state.currentRequestAt = Date().timeIntervalSince1970
+            state.currentRequestAt = now
             state.currentRequestIgnoreLevel = 0
             state.currentActivity = "刚从你的工作流里睁开眼"
             state.lastCareSummary = "它刚刚出生，正在试着认你"
+            _ = setActiveFeedback(&state, key: "birth_intro", source: "bootstrap", priority: 40, duration: 3.5, now: now, resolvedOutcome: "none", force: true)
             appendFoodLog(&state, entry: "诞生完成：\(blueprint.petName) 被唤醒了")
             return blueprint.birthNarrative
         }
 
         if state.firstBondAt == nil {
-            state.firstBondAt = Date().timeIntervalSince1970
+            state.firstBondAt = now
         }
         state.lastCareSummary = "\(blueprint.petName) 把自己的名字和气质重新整理清楚了，但它还是认得你"
         appendFoodLog(&state, entry: "身份更新：\(blueprint.petName) 的轮廓更清晰了")
@@ -3954,6 +3978,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
 
     func backgroundTick() {
         store.ensureBridgeRunning()
+        clearExpiredFeedback(&state)
         state = PetEngine.decay(state, hours: 1)
         if let routineMessage = performAutonomousRoutine() {
             refresh(message: routineMessage)
@@ -4233,6 +4258,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             state.currentRequestAt = nil
             state.currentRequestIgnoreLevel = 0
         }
+        pruneInvalidFeedback(&state)
         let feedbackStyle = bubbleFeedbackStyle(state)
         let statusText = minimalistStatusText(state, badge: feedbackStyle.badge)
         contentView.sceneView.state = state
