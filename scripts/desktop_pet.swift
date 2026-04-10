@@ -836,6 +836,30 @@ func bubbleFeedbackStyle(_ state: PetState) -> BubbleFeedbackStyle {
                 accentWidth: 42,
                 tailShift: 7
             )
+        case "interaction_matched_affinity":
+            let badge = (state.lastImpactTier ?? 0) >= 3 ? "拍准重拍" : ((state.lastImpactTier ?? 0) == 2 ? "拍准中拍" : "拍准轻拍")
+            return BubbleFeedbackStyle(
+                badge: badge,
+                accentColor: NSColor(calibratedRed: 0.91, green: 0.50, blue: 0.36, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.95, green: 0.80, blue: 0.72, alpha: 0.98),
+                fillColor: NSColor.white.withAlphaComponent(0.96),
+                requestColor: NSColor(calibratedRed: 0.67, green: 0.25, blue: 0.18, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.40, green: 0.23, blue: 0.18, alpha: 1.0),
+                accentWidth: (state.lastImpactTier ?? 0) >= 3 ? 58 : ((state.lastImpactTier ?? 0) == 2 ? 48 : 38),
+                tailShift: (state.lastImpactTier ?? 0) >= 3 ? 10 : 4
+            )
+        case "interaction_matched_agitation":
+            let badge = (state.lastImpactTier ?? 0) >= 3 ? "拍散躁劲" : ((state.lastImpactTier ?? 0) == 2 ? "拍开躁劲" : "拍松躁劲")
+            return BubbleFeedbackStyle(
+                badge: badge,
+                accentColor: NSColor(calibratedRed: 0.56, green: 0.42, blue: 0.94, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.83, green: 0.79, blue: 0.94, alpha: 0.98),
+                fillColor: NSColor(calibratedRed: 0.98, green: 0.97, blue: 1.0, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.45, green: 0.28, blue: 0.73, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.30, green: 0.25, blue: 0.44, alpha: 1.0),
+                accentWidth: (state.lastImpactTier ?? 0) >= 3 ? 58 : ((state.lastImpactTier ?? 0) == 2 ? 48 : 38),
+                tailShift: (state.lastImpactTier ?? 0) >= 3 ? -10 : -4
+            )
         case "request_missed_twice":
             return BubbleFeedbackStyle(
                 badge: "等拍失落",
@@ -857,6 +881,28 @@ func bubbleFeedbackStyle(_ state: PetState) -> BubbleFeedbackStyle {
                 logColor: NSColor(calibratedRed: 0.39, green: 0.31, blue: 0.22, alpha: 1.0),
                 accentWidth: 36,
                 tailShift: -4
+            )
+        case "meal_eaten":
+            return BubbleFeedbackStyle(
+                badge: "刚吃上一口",
+                accentColor: NSColor(calibratedRed: 0.28, green: 0.72, blue: 0.45, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.80, green: 0.92, blue: 0.84, alpha: 0.98),
+                fillColor: NSColor(calibratedRed: 0.97, green: 1.0, blue: 0.97, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.19, green: 0.45, blue: 0.27, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.20, green: 0.34, blue: 0.22, alpha: 1.0),
+                accentWidth: 36,
+                tailShift: 0
+            )
+        case "request_waiting":
+            return BubbleFeedbackStyle(
+                badge: "在等你",
+                accentColor: NSColor(calibratedRed: 0.93, green: 0.63, blue: 0.30, alpha: 1.0),
+                borderColor: NSColor(calibratedRed: 0.95, green: 0.85, blue: 0.73, alpha: 0.98),
+                fillColor: NSColor(calibratedRed: 1.0, green: 0.99, blue: 0.96, alpha: 0.95),
+                requestColor: NSColor(calibratedRed: 0.58, green: 0.35, blue: 0.14, alpha: 1.0),
+                logColor: NSColor(calibratedRed: 0.39, green: 0.28, blue: 0.20, alpha: 1.0),
+                accentWidth: 34,
+                tailShift: 2
             )
         default:
             break
@@ -1915,6 +1961,8 @@ func rewardForMatchedRequest(_ state: inout PetState, profile: InteractionReques
         && profile.desiredValence == actualValence
 
     if matched {
+        let feedbackKey = actualValence == "affinity" ? "interaction_matched_affinity" : "interaction_matched_agitation"
+        _ = setActiveFeedback(&state, key: feedbackKey, source: "interaction", priority: 70, duration: 2.2, resolvedOutcome: "matched")
         addReward(&state, amount: 1, reason: "满足了它的请求")
         state.currentRequest = nil
     }
@@ -4029,6 +4077,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
 
         let meal = store.buildMeal(taskType: taskTypeForFood(food), tokensSpent: perServingTokens, quality: quality)
         state = PetEngine.applyMeal(state, meal: meal)
+        _ = setActiveFeedback(&state, key: "meal_eaten", source: "feed", priority: 50, duration: 2.4)
         state.lastCareSummary = "刚吃了\(food)，正在\(state.currentActivity ?? "慢悠悠巡桌")"
         appendFoodLog(&state, entry: "自动吃掉：\(food)")
         refresh(message: reason)
@@ -4177,6 +4226,9 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         if state.currentRequest != previousRequest {
             state.currentRequestAt = state.currentRequest == nil ? nil : Date().timeIntervalSince1970
             state.currentRequestIgnoreLevel = 0
+            if state.currentRequest != nil {
+                _ = setActiveFeedback(&state, key: "request_waiting", source: "background", priority: 30, duration: 2.2)
+            }
         } else if state.currentRequest == nil {
             state.currentRequestAt = nil
             state.currentRequestIgnoreLevel = 0
