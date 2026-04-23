@@ -125,7 +125,7 @@ copy_into_cache "docs"
 copy_into_cache "runtime/azai-token-pet-desktop"
 copy_optional_into_cache "$OFFICIAL_RELEASE_ARCHIVE_REL"
 
-echo "Published 阿在 Token Pet to Codex local marketplace."
+echo "Published 吞金兽 Token Pet to Codex local marketplace."
 echo "Plugin path: $TARGET_PLUGIN_PATH"
 echo "Marketplace: $MARKETPLACE_PATH"
 echo "Codex cache: $CODEX_CACHE_ROOT"
