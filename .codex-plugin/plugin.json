@@ -16,9 +16,9 @@
   ],
   "apps": "./.app.json",
   "interface": {
-    "displayName": "阿在 Token Pet",
-    "shortDescription": "把花掉的 Token 养成一只会成长的桌面宠物，可从 Codex 插件入口直接启动。",
-    "longDescription": "阿在 Token Pet 把用户在 Codex 等 AI 工作流中的 Token 消耗转成宠物的食物、情绪、成长和进化反馈，让成本感知、任务结构和长期投入变得可见、可玩、可优化。当前版本以 Codex + macOS companion 为正式首发范围：安装到本地 Codex 后，可直接从插件入口使用“启动阿在 Token Pet 桌宠” starter prompt，或运行插件根目录里的 start.command 启动桌宠；停止可运行 stop.command，重置可运行 reset.command。",
+    "displayName": "吞金兽 Token Pet",
+    "shortDescription": "把花掉的 Token 养成一只会成长的吞金兽，可从 Codex 插件入口直接启动。",
+    "longDescription": "吞金兽 Token Pet 把用户在 Codex 等 AI 工作流中的 Token 消耗转成宠物的食物、情绪、成长和进化反馈，让成本感知、任务结构和长期投入变得可见、可玩、可优化。当前版本以 Codex + macOS companion 为正式首发范围：安装到本地 Codex 后，可直接从插件入口使用“启动吞金兽 Token Pet 桌宠” starter prompt，或运行插件根目录里的 start.command 启动桌宠；停止可运行 stop.command，重置可运行 reset.command。",
     "developerName": "阿在项目组",
     "category": "Productivity",
     "websiteURL": "https://github.com/woohuaca/Tokenpet",
@@ -31,7 +31,7 @@
       "Gamify"
     ],
     "defaultPrompt": [
-      "启动阿在 Token Pet 桌宠",
+      "启动吞金兽 Token Pet 桌宠",
       "用今天的 Token 消耗喂养宠物，并解释营养来源。",
       "按任务类型分析本周宠物为什么进化成当前形态。"
     ],
