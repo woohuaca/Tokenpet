@@ -2477,25 +2477,34 @@ final class PetSceneView: NSView {
         let growthTendency = dominantGrowthTendency(state).title
         let identityVisual = identityVisualProfile(state)
         let birthPending = isBirthBondPending(state)
+        let activeFeedback = currentActiveFeedback(state)
+        let feedbackKey = activeFeedback?.key
         let ignoreLevel = currentRequestIgnoreLevel(state)
         let isSleeping = activityHasAny(state, keywords: ["睡", "补眠", "打盹", "回窝"])
         let isRunning = activityHasAny(state, keywords: ["巡桌", "乱跑", "转圈", "热身"])
         let isSnuggling = activityHasAny(state, keywords: ["撒娇", "呼噜", "摸", "蹭"])
         let isCleaning = activityHasAny(state, keywords: ["清洁", "整理", "舔毛", "梳"])
         let isCelebrating = activityHasAny(state, keywords: ["星屑", "开心", "转圈", "翻肚皮"])
-        let isWaiting = ignoreLevel == 1 || activity.contains("等你回头")
-        let isSulking = ignoreLevel >= 2 || activity.contains("缩成一团") || activity.contains("消化躁劲")
-        let isOffBeat = activity.contains("歪头看你") || activity.contains("甩了下毛") || activity.contains("没完全拍透")
+        let isBirthIntro = feedbackKey == "birth_intro"
+        let isWaitingFeedback = feedbackKey == "request_waiting"
+        let isMealFeedback = feedbackKey == "meal_eaten"
+        let isMissedOnce = feedbackKey == "request_missed_once"
+        let isMissedTwice = feedbackKey == "request_missed_twice"
+        let isMatchedFeedback = feedbackKey == "interaction_matched_affinity" || feedbackKey == "interaction_matched_agitation"
+        let isBonding = feedbackKey == "bond_complete"
+        let isWaiting = isWaitingFeedback || ignoreLevel == 1 || activity.contains("等你回头")
+        let isSulking = isMissedTwice || ignoreLevel >= 2 || activity.contains("缩成一团") || activity.contains("消化躁劲")
+        let isOffBeat = feedbackKey == "interaction_offbeat" || activity.contains("歪头看你") || activity.contains("甩了下毛") || activity.contains("没完全拍透")
         let isTender = growthTendency == "细养型"
         let isBursting = growthTendency == "猛长型"
         let isStuffy = growthTendency == "胀仓型"
         let impact = currentImpactFeedback(state)
 
         let bobBase = sin(animationPhase) * 7
-        let postureTuck: CGFloat = (isSulking ? 10 : (isWaiting ? 4 : 0)) + (isTender ? 2 : 0) + (isStuffy ? 3 : 0)
-        let bobScale: CGFloat = isSleeping ? 0.35 : (isRunning ? (isBursting ? 1.55 : 1.35) : (isSulking ? 0.32 : (isStuffy ? 0.78 : (isTender ? 0.82 : 1.0))))
+        let postureTuck: CGFloat = (isSulking ? 10 : (isWaiting ? 4 : 0)) + (isTender ? 2 : 0) + (isStuffy ? 3 : 0) - (isMealFeedback ? 2 : 0)
+        let bobScale: CGFloat = isSleeping ? 0.35 : (isRunning ? (isBursting ? 1.55 : 1.35) : (isBirthIntro ? 0.58 : (isSulking ? 0.32 : (isMealFeedback ? 0.64 : (isStuffy ? 0.78 : (isTender ? 0.82 : 1.0))))))
         let bob = bobBase * bobScale - postureTuck
-        let wagBase: CGFloat = isSulking ? 3 : (isWaiting ? 5 : (isSnuggling ? 15 : 10))
+        let wagBase: CGFloat = isSulking ? 3 : (isWaiting ? 5 : (isMealFeedback ? 7 : (isSnuggling ? 15 : 10)))
         let wagScale: CGFloat = (isTender ? 0.72 : (isBursting ? 1.28 : (isStuffy ? 0.66 : 1.0))) * identityVisual.tailSwingBias
         let wag = sin(animationPhase * (isRunning ? (isBursting ? 3.0 : 2.5) : (isTender ? 1.35 : 1.7))) * (wagBase * wagScale)
         let blink = abs(sin(animationPhase * 0.55)) < 0.08
@@ -2503,13 +2512,13 @@ final class PetSceneView: NSView {
         let bodyColor = formColors[state.form] ?? formColors["neutral"]!
         let accent = moodAccent(for: mood)
         let trait = generatedTraitProfile(state)
-        let pawLift = birthPending ? CGFloat(6 + abs(sin(animationPhase * 2.0)) * 4) : (isSnuggling ? CGFloat((isTender ? 6 : 8) + abs(sin(animationPhase * 2.1)) * (isBursting ? 8 : 6)) : 0)
+        let pawLift = (birthPending || isBirthIntro) ? CGFloat(6 + abs(sin(animationPhase * 2.0)) * 4) : (isSnuggling ? CGFloat((isTender ? 6 : 8) + abs(sin(animationPhase * 2.1)) * (isBursting ? 8 : 6)) : (isWaitingFeedback ? CGFloat(3 + abs(sin(animationPhase * 1.7)) * 2) : 0))
         let dash = isRunning ? CGFloat(abs(sin(animationPhase * (isBursting ? 3.0 : 2.6))) * (isBursting ? 12 : 8)) : 0
         let impactPower = impact.map { max(0, 1.0 - $0.age / 1.3) } ?? 0
         let impactShift = CGFloat((impact?.valence == "agitation" ? 1 : -1) * Int(round((impactPower) * Double((impact?.tier ?? 0) * 4))))
-        let earTilt: CGFloat = (isSulking ? 12 : (isWaiting ? 6 : (birthPending ? -6 : 0))) + (isStuffy ? 4 : 0) - (isBursting ? 3 : 0)
-        let headTilt: CGFloat = (isOffBeat ? 6 : (isSulking ? -5 : 0)) + (isTender ? -2 : 0) + (isBursting ? 2 : 0) + identityVisual.browTiltBias
-        let tailDrop: CGFloat = (isSulking ? 18 : (isWaiting ? 10 : 0)) + (isStuffy ? 8 : 0) - (isBursting ? 4 : 0)
+        let earTilt: CGFloat = (isSulking ? 12 : (isWaiting ? 6 : ((birthPending || isBirthIntro) ? -6 : 0))) + (isStuffy ? 4 : 0) - (isBursting ? 3 : 0) - (isMealFeedback ? 2 : 0)
+        let headTilt: CGFloat = (isOffBeat ? 6 : (isSulking ? -5 : (isMealFeedback ? 2 : 0))) + (isTender ? -2 : 0) + (isBursting ? 2 : 0) + identityVisual.browTiltBias
+        let tailDrop: CGFloat = (isSulking ? 18 : (isWaiting ? 10 : 0)) + (isStuffy ? 8 : 0) - (isBursting ? 4 : 0) + (isMealFeedback ? 4 : 0)
         let stageScale: CGFloat
         switch state.stage {
         case "egg": stageScale = 0.78
@@ -2534,8 +2543,10 @@ final class PetSceneView: NSView {
 
         let haloRect = NSRect(x: 42, y: 52 + bob * 0.3, width: 142, height: 142)
         let haloColor: NSColor
-        if birthPending {
+        if isBirthIntro || birthPending {
             haloColor = NSColor(calibratedRed: 1.0, green: 0.87, blue: 0.60, alpha: 0.30)
+        } else if isMealFeedback {
+            haloColor = NSColor(calibratedRed: 0.72, green: 0.94, blue: 0.74, alpha: 0.18)
         } else if isSulking {
             haloColor = NSColor(calibratedRed: 0.73, green: 0.76, blue: 0.88, alpha: 0.14)
         } else if isWaiting {
@@ -2750,6 +2761,23 @@ final class PetSceneView: NSView {
             sprout.stroke()
         }
 
+        if isBirthIntro {
+            let birthPulse = CGFloat(abs(sin(animationPhase * 1.6)))
+            for index in 0..<2 {
+                let radius = CGFloat(118 + index * 24) + birthPulse * CGFloat(10 + index * 4)
+                let ringRect = NSRect(
+                    x: bodyOriginX + bodyWidth * 0.5 - radius / 2,
+                    y: bodyOriginY + bodyHeight * 0.5 - radius / 2,
+                    width: radius,
+                    height: radius * 0.84
+                )
+                let ring = NSBezierPath(ovalIn: ringRect)
+                NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.68, alpha: 0.18 - Double(index) * 0.05).setStroke()
+                ring.lineWidth = index == 0 ? 2.4 : 1.8
+                ring.stroke()
+            }
+        }
+
         if isWaiting {
             let dotAlpha = 0.32 + abs(sin(animationPhase * 1.8)) * 0.24
             for index in 0..<3 {
@@ -2821,6 +2849,49 @@ final class PetSceneView: NSView {
             tiltSpark.lineWidth = 2.5
             accent.withAlphaComponent(0.42).setStroke()
             tiltSpark.stroke()
+        }
+
+        if isMealFeedback {
+            for index in 0..<3 {
+                let crumbSize = CGFloat(5 + index)
+                let crumb = NSBezierPath(ovalIn: NSRect(
+                    x: bodyOriginX + bodyWidth * 0.60 + CGFloat(index) * 7,
+                    y: bodyOriginY + bodyHeight * 0.60 + CGFloat((index + 1) % 2) * 6 - abs(sin(animationPhase * 1.7 + CGFloat(index))) * 4,
+                    width: crumbSize,
+                    height: crumbSize
+                ))
+                NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.70, alpha: 0.62 - Double(index) * 0.1).setFill()
+                crumb.fill()
+            }
+        }
+
+        if isWaitingFeedback {
+            let focusLine = NSBezierPath()
+            focusLine.move(to: NSPoint(x: bodyOriginX + bodyWidth + 6, y: bodyOriginY + bodyHeight * 0.36))
+            focusLine.line(to: NSPoint(x: bodyOriginX + bodyWidth + 18, y: bodyOriginY + bodyHeight * 0.30))
+            focusLine.lineWidth = 2
+            accent.withAlphaComponent(0.28 + Double(abs(sin(animationPhase * 1.4))) * 0.18).setStroke()
+            focusLine.stroke()
+        }
+
+        if isMissedOnce {
+            let sigh = NSBezierPath()
+            sigh.move(to: NSPoint(x: bodyOriginX - 4, y: bodyOriginY + 12))
+            sigh.curve(
+                to: NSPoint(x: bodyOriginX - 18, y: bodyOriginY + 20),
+                controlPoint1: NSPoint(x: bodyOriginX - 8, y: bodyOriginY + 20),
+                controlPoint2: NSPoint(x: bodyOriginX - 14, y: bodyOriginY + 24)
+            )
+            sigh.lineWidth = 2
+            NSColor(calibratedRed: 0.80, green: 0.66, blue: 0.40, alpha: 0.34).setStroke()
+            sigh.stroke()
+        }
+
+        if isBonding || isMatchedFeedback {
+            let glowRect = NSRect(x: bodyOriginX + bodyWidth * 0.5 - 14, y: bodyOriginY + bodyHeight * 0.56 - 10, width: 28, height: 20)
+            let glow = NSBezierPath(ovalIn: glowRect)
+            accent.withAlphaComponent(isBonding ? 0.24 : 0.16).setFill()
+            glow.fill()
         }
 
         if wantsPetting(state) {
