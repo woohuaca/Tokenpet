@@ -82,6 +82,10 @@ def find_latest_session():
     return max(candidates, key=lambda item: item.stat().st_mtime)
 
 
+def iter_session_paths():
+    return sorted(SESSIONS_ROOT.rglob("*.jsonl"), key=lambda item: str(item))
+
+
 def extract_text_from_message(payload):
     parts = payload.get("content", [])
     values = []
@@ -144,8 +148,15 @@ def load_spend_ledger_index():
     ids = index.get("ids", [])
     if ids or not SPEND_LEDGER_PATH.exists():
         return set(ids)
+    return rebuild_spend_ledger_index()
 
+
+def rebuild_spend_ledger_index():
     rebuilt = set()
+    if not SPEND_LEDGER_PATH.exists():
+        save_json(SPEND_LEDGER_INDEX_PATH, {"ids": [], "rebuilt_at": utc_now()})
+        return rebuilt
+
     with SPEND_LEDGER_PATH.open("r", encoding="utf-8") as handle:
         for line in handle:
             try:
@@ -159,6 +170,20 @@ def load_spend_ledger_index():
     return rebuilt
 
 
+def spend_ledger_contains(event_id):
+    if not SPEND_LEDGER_PATH.exists():
+        return False
+    with SPEND_LEDGER_PATH.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            if item.get("id") == event_id:
+                return True
+    return False
+
+
 def save_spend_ledger_index(ids):
     save_json(SPEND_LEDGER_INDEX_PATH, {"ids": sorted(ids), "updated_at": utc_now()})
 
@@ -170,6 +195,10 @@ def append_spend_ledger_event(event):
 
     ids = load_spend_ledger_index()
     if event_id in ids:
+        return False
+    if spend_ledger_contains(event_id):
+        ids.add(event_id)
+        save_spend_ledger_index(ids)
         return False
 
     record = dict(event)
@@ -197,6 +226,77 @@ def append_feed_event(event):
     feed["latest_event_id"] = event["id"]
     feed["updated_at"] = utc_now()
     save_json(FEED_PATH, feed)
+
+
+def build_token_event(session_path, obj, last_user_text, last_cwd, total_tokens):
+    payload = obj.get("payload", {})
+    info = payload.get("info", {})
+    last_usage = info.get("last_token_usage", {})
+    task_type = classify_task(last_user_text, last_cwd)
+    quality = classify_quality(task_type, last_usage)
+    return {
+        "id": f"{session_path.name}:{total_tokens}",
+        "timestamp": obj.get("timestamp"),
+        "source": "codex",
+        "session_path": str(session_path),
+        "cwd": last_cwd,
+        "task_type": task_type,
+        "quality": quality,
+        "real_tokens": last_usage.get("total_tokens", 0),
+        "input_tokens": last_usage.get("input_tokens", 0),
+        "output_tokens": last_usage.get("output_tokens", 0),
+        "reasoning_tokens": last_usage.get("reasoning_output_tokens", 0),
+        "user_text": last_user_text[:280],
+    }
+
+
+def backfill_spend_ledger_from_session(session_path):
+    last_user_text = ""
+    last_cwd = ""
+    last_total_tokens = 0
+    added = 0
+
+    with session_path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+
+            if obj.get("type") == "turn_context":
+                last_cwd = obj.get("payload", {}).get("cwd", last_cwd)
+                continue
+
+            if obj.get("type") == "response_item":
+                payload = obj.get("payload", {})
+                if payload.get("type") == "message" and payload.get("role") == "user":
+                    text = extract_text_from_message(payload)
+                    if is_meaningful_user_text(text):
+                        last_user_text = text
+                continue
+
+            if obj.get("type") != "event_msg":
+                continue
+
+            payload = obj.get("payload", {})
+            if payload.get("type") != "token_count" or not payload.get("info"):
+                continue
+
+            total_usage = payload["info"].get("total_token_usage", {})
+            total_tokens = total_usage.get("total_tokens", last_total_tokens)
+            if not total_tokens or total_tokens <= last_total_tokens:
+                continue
+
+            event = build_token_event(session_path, obj, last_user_text, last_cwd, total_tokens)
+            if append_spend_ledger_event(event):
+                added += 1
+            last_total_tokens = total_tokens
+
+    return added
+
+
+def backfill_spend_ledger_from_all_sessions():
+    return sum(backfill_spend_ledger_from_session(path) for path in iter_session_paths())
 
 
 def initialize_state_from_existing_session(session_path, state):
@@ -279,28 +379,11 @@ def process_session_updates(session_path, state):
                 continue
 
             total_usage = payload["info"].get("total_token_usage", {})
-            last_usage = payload["info"].get("last_token_usage", {})
             total_tokens = total_usage.get("total_tokens", last_total_tokens)
             if not total_tokens or total_tokens <= last_total_tokens:
                 continue
 
-            task_type = classify_task(last_user_text, last_cwd)
-            quality = classify_quality(task_type, last_usage)
-            event_id = f"{session_path.name}:{total_tokens}"
-            event = {
-                "id": event_id,
-                "timestamp": obj.get("timestamp"),
-                "source": "codex",
-                "session_path": str(session_path),
-                "cwd": last_cwd,
-                "task_type": task_type,
-                "quality": quality,
-                "real_tokens": last_usage.get("total_tokens", 0),
-                "input_tokens": last_usage.get("input_tokens", 0),
-                "output_tokens": last_usage.get("output_tokens", 0),
-                "reasoning_tokens": last_usage.get("reasoning_output_tokens", 0),
-                "user_text": last_user_text[:280],
-            }
+            event = build_token_event(session_path, obj, last_user_text, last_cwd, total_tokens)
             append_feed_event(event)
             last_total_tokens = total_tokens
 
@@ -323,6 +406,7 @@ def main():
     PID_PATH.write_text(str(os.getpid()), encoding="utf-8")
     state = load_json(STATE_PATH, default_state())
     backfill_spend_ledger_from_feed()
+    backfill_spend_ledger_from_all_sessions()
 
     while True:
         latest_session = find_latest_session()
