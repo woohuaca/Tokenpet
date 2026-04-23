@@ -15,6 +15,8 @@ RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 SESSIONS_ROOT = Path.home() / ".codex" / "sessions"
 STATE_PATH = RUNTIME_DIR / "codex-bridge-state.json"
 FEED_PATH = RUNTIME_DIR / "codex-feed.json"
+SPEND_LEDGER_PATH = RUNTIME_DIR / "token-spend-ledger.jsonl"
+SPEND_LEDGER_INDEX_PATH = RUNTIME_DIR / "token-spend-ledger-index.json"
 PID_PATH = RUNTIME_DIR / "codex-bridge.pid"
 
 
@@ -137,7 +139,57 @@ def load_feed():
     return load_json(FEED_PATH, {"latest_event_id": None, "events": [], "updated_at": None})
 
 
+def load_spend_ledger_index():
+    index = load_json(SPEND_LEDGER_INDEX_PATH, {"ids": []})
+    ids = index.get("ids", [])
+    if ids or not SPEND_LEDGER_PATH.exists():
+        return set(ids)
+
+    rebuilt = set()
+    with SPEND_LEDGER_PATH.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            event_id = item.get("id")
+            if event_id:
+                rebuilt.add(event_id)
+    save_json(SPEND_LEDGER_INDEX_PATH, {"ids": sorted(rebuilt), "rebuilt_at": utc_now()})
+    return rebuilt
+
+
+def save_spend_ledger_index(ids):
+    save_json(SPEND_LEDGER_INDEX_PATH, {"ids": sorted(ids), "updated_at": utc_now()})
+
+
+def append_spend_ledger_event(event):
+    event_id = event.get("id")
+    if not event_id:
+        return False
+
+    ids = load_spend_ledger_index()
+    if event_id in ids:
+        return False
+
+    record = dict(event)
+    record["recorded_at"] = utc_now()
+    with SPEND_LEDGER_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+
+    ids.add(event_id)
+    save_spend_ledger_index(ids)
+    return True
+
+
+def backfill_spend_ledger_from_feed():
+    feed = load_feed()
+    for event in feed.get("events", []):
+        append_spend_ledger_event(event)
+
+
 def append_feed_event(event):
+    append_spend_ledger_event(event)
     feed = load_feed()
     feed["events"] = [item for item in feed.get("events", []) if item.get("id") != event["id"]]
     feed["events"].append(event)
@@ -270,6 +322,7 @@ def process_session_updates(session_path, state):
 def main():
     PID_PATH.write_text(str(os.getpid()), encoding="utf-8")
     state = load_json(STATE_PATH, default_state())
+    backfill_spend_ledger_from_feed()
 
     while True:
         latest_session = find_latest_session()
