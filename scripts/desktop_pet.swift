@@ -207,6 +207,88 @@ struct FeedEnvelope: Codable {
     let updated_at: String?
 }
 
+struct TokenSpendSummaryGroup: Codable {
+    let label: String?
+    let count: Int
+    let realTokens: Double
+    let petEnergy: Double
+
+    enum CodingKeys: String, CodingKey {
+        case label
+        case count
+        case realTokens = "real_tokens"
+        case petEnergy = "pet_energy"
+    }
+}
+
+struct TokenSpendSummaryBucket: Codable {
+    let label: String
+    let count: Int
+    let realTokens: Double
+    let inputTokens: Double
+    let outputTokens: Double
+    let reasoningTokens: Double
+    let petEnergy: Double
+    let byTaskType: [String: TokenSpendSummaryGroup]
+    let byQuality: [String: TokenSpendSummaryGroup]
+
+    enum CodingKeys: String, CodingKey {
+        case label
+        case count
+        case realTokens = "real_tokens"
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case reasoningTokens = "reasoning_tokens"
+        case petEnergy = "pet_energy"
+        case byTaskType = "by_task_type"
+        case byQuality = "by_quality"
+    }
+}
+
+struct TokenSpendSummaryEvent: Codable {
+    let id: String?
+    let timestamp: String?
+    let source: String?
+    let taskType: String?
+    let quality: String?
+    let realTokens: Double
+    let inputTokens: Double
+    let outputTokens: Double
+    let reasoningTokens: Double
+    let petEnergy: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case timestamp
+        case source
+        case taskType = "task_type"
+        case quality
+        case realTokens = "real_tokens"
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case reasoningTokens = "reasoning_tokens"
+        case petEnergy = "pet_energy"
+    }
+}
+
+struct TokenSpendSummary: Codable {
+    let updatedAt: String?
+    let timezone: String?
+    let today: TokenSpendSummaryBucket
+    let week: TokenSpendSummaryBucket
+    let all: TokenSpendSummaryBucket
+    let latestEvents: [TokenSpendSummaryEvent]
+
+    enum CodingKeys: String, CodingKey {
+        case updatedAt = "updated_at"
+        case timezone
+        case today
+        case week
+        case all
+        case latestEvents = "latest_events"
+    }
+}
+
 struct TokenLedgerEntry: Codable {
     let timestamp: String?
     let source: String
@@ -382,7 +464,7 @@ func stageLabel(for name: String) -> String {
 }
 
 func petDisplayName(_ state: PetState) -> String {
-    state.petName ?? "阿在"
+    state.petName ?? "吞金兽"
 }
 
 func petSoulSignature(_ state: PetState) -> String {
@@ -780,11 +862,11 @@ func clearExpiredFeedback(_ state: inout PetState, now: Double = Date().timeInte
 
 func pruneInvalidFeedback(_ state: inout PetState) {
     guard let key = state.activeFeedbackKey else { return }
-    if key == "request_waiting" && state.currentRequest == nil {
+    if key == "request_waiting" && state.currentRequest == nil && state.activeFeedbackSource != "debug" {
         clearActiveFeedback(&state)
         return
     }
-    if key == "birth_intro" && !isBirthBondPending(state) {
+    if key == "birth_intro" && !isBirthBondPending(state) && state.activeFeedbackSource != "debug" {
         clearActiveFeedback(&state)
     }
 }
@@ -1675,6 +1757,41 @@ func compactLedgerTime(_ timestamp: String?) -> String {
     return timestamp
 }
 
+func compactTokenAmount(_ value: Double) -> String {
+    if value >= 10000 {
+        return String(format: "%.1f万", value / 10000)
+    }
+    return "\(Int(value))"
+}
+
+func topSummaryGroup(_ groups: [String: TokenSpendSummaryGroup]) -> TokenSpendSummaryGroup? {
+    groups.values.sorted { left, right in
+        if left.realTokens == right.realTokens { return left.count > right.count }
+        return left.realTokens > right.realTokens
+    }.first
+}
+
+func tokenSpendSummaryLines(_ summary: TokenSpendSummary?) -> [String] {
+    guard let summary else {
+        return [
+            "完整账本：正在生成汇总，稍后会显示。",
+            "账本文件：runtime/token-spend-ledger.jsonl"
+        ]
+    }
+
+    let todayTop = topSummaryGroup(summary.today.byTaskType)?.label ?? "暂无"
+    let weekTop = topSummaryGroup(summary.week.byTaskType)?.label ?? "暂无"
+    let allTop = topSummaryGroup(summary.all.byTaskType)?.label ?? "暂无"
+
+    return [
+        "完整账本：\(summary.all.count) 条 / \(compactTokenAmount(summary.all.realTokens)) Token / \(compactTokenAmount(summary.all.petEnergy)) 粮值",
+        "今日消耗：\(summary.today.count) 条 / \(compactTokenAmount(summary.today.realTokens)) Token / 主食 \(todayTop)",
+        "本周消耗：\(summary.week.count) 条 / \(compactTokenAmount(summary.week.realTokens)) Token / 主食 \(weekTop)",
+        "长期结构：主食 \(allTop)，输入 \(compactTokenAmount(summary.all.inputTokens)) / 输出 \(compactTokenAmount(summary.all.outputTokens)) / 思考 \(compactTokenAmount(summary.all.reasoningTokens))",
+        "汇总时间：\(compactLedgerTime(summary.updatedAt)) \(summary.timezone ?? "")"
+    ]
+}
+
 func inventoryServingCount(_ state: PetState) -> Int {
     normalizedInventory(state).values.reduce(0, +)
 }
@@ -2045,6 +2162,7 @@ final class PetStore {
     let stateURL: URL
     let feedURL: URL
     let externalFeedURL: URL
+    let tokenSummaryURL: URL
     let configURL: URL
     let runtimeDir: URL
     let scriptsDir: URL
@@ -2062,6 +2180,7 @@ final class PetStore {
         stateURL = runtimeDir.appendingPathComponent("pet-state.json")
         feedURL = runtimeDir.appendingPathComponent("codex-feed.json")
         externalFeedURL = runtimeDir.appendingPathComponent("external-feed.json")
+        tokenSummaryURL = runtimeDir.appendingPathComponent("token-spend-summary.json")
         configURL = runtimeDir.appendingPathComponent("pet-config.json")
         instancePIDURL = runtimeDir.appendingPathComponent("desktop-pet.pid")
         bridgeScriptURL = scriptsDir.appendingPathComponent("codex_usage_bridge.py")
@@ -2226,6 +2345,11 @@ final class PetStore {
     func loadExternalFeed() -> FeedEnvelope? {
         guard let data = try? Data(contentsOf: externalFeedURL) else { return nil }
         return try? JSONDecoder().decode(FeedEnvelope.self, from: data)
+    }
+
+    func loadTokenSpendSummary() -> TokenSpendSummary? {
+        guard let data = try? Data(contentsOf: tokenSummaryURL) else { return nil }
+        return try? JSONDecoder().decode(TokenSpendSummary.self, from: data)
     }
 
     func loadMergedFeed(config: PetConfig) -> FeedEnvelope? {
@@ -3498,6 +3622,7 @@ final class PetContainerView: NSView {
     var decayHandler: (() -> Void)?
     var showInfoHandler: (() -> Void)?
     var toggleAutoEatHandler: (() -> Void)?
+    var debugFeedbackHandler: ((String) -> Void)?
 
     override var isFlipped: Bool { true }
 
@@ -3598,6 +3723,25 @@ final class PetContainerView: NSView {
         autoEat.target = self
         contextMenu.addItem(autoEat)
 
+        let debugRoot = NSMenuItem(title: "调试互动反馈", action: nil, keyEquivalent: "")
+        let debugMenu = NSMenu()
+        [
+            ("首次诞生", "birth_intro"),
+            ("认主完成", "bond_complete"),
+            ("进食特效", "meal_eaten"),
+            ("等待回应", "request_waiting"),
+            ("拍准反馈", "interaction_matched_affinity"),
+            ("拍偏反馈", "interaction_offbeat"),
+            ("错过反馈", "request_missed_twice")
+        ].forEach { title, key in
+            let item = NSMenuItem(title: title, action: #selector(triggerDebugFeedback(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = key
+            debugMenu.addItem(item)
+        }
+        contextMenu.setSubmenu(debugMenu, for: debugRoot)
+        contextMenu.addItem(debugRoot)
+
         contextMenu.addItem(.separator())
         let quit = NSMenuItem(title: "退出桌宠", action: #selector(quitPet), keyEquivalent: "")
         quit.target = self
@@ -3625,11 +3769,15 @@ final class PetContainerView: NSView {
     @objc func decayPet() { decayHandler?() }
     @objc func showInfo() { showInfoHandler?() }
     @objc func toggleAutoEat() { toggleAutoEatHandler?() }
+    @objc func triggerDebugFeedback(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        debugFeedbackHandler?(key)
+    }
     @objc func quitPet() { NSApp.terminate(nil) }
 }
 
 final class PetInfoViewController: NSViewController {
-    let titleLabel = NSTextField(labelWithString: "阿在图鉴")
+    let titleLabel = NSTextField(labelWithString: "吞金兽图鉴")
     let detailView = NSTextView(frame: .zero)
 
     override func loadView() {
@@ -3659,10 +3807,11 @@ final class PetInfoViewController: NSViewController {
         view.addSubview(scrollView)
     }
 
-    func update(state: PetState, config: PetConfig) {
+    func update(state: PetState, config: PetConfig, summary: TokenSpendSummary? = nil) {
         titleLabel.stringValue = "\(petDisplayName(state)) 图鉴"
         let traits = generatedTraitProfile(state)
         let habits = generatedHabitProfile(state)
+        let summaryLines = tokenSpendSummaryLines(summary)
         let unlocked = unlockedFormsValue(state)
         let metabolism = metabolismPhase(state)
         let growthTendency = dominantGrowthTendency(state)
@@ -3720,6 +3869,9 @@ final class PetInfoViewController: NSViewController {
             "Codex 来源：\(config.codexSourceEnabled ? "开启" : "关闭")",
             "外部标准来源：\(config.externalSourceEnabled ? "开启" : "关闭")",
             "",
+            "完整 Token 账本汇总：",
+            summaryLines.joined(separator: "\n"),
+            "",
             "最近 Token 账表：",
             ledgerLines.isEmpty ? "暂无记录" : ledgerLines,
             "",
@@ -3748,7 +3900,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "阿在图鉴"
+        panel.title = "吞金兽图鉴"
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.contentViewController = infoController
@@ -3865,6 +4017,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         contentView.decayHandler = { [weak self] in self?.applyDecay() }
         contentView.showInfoHandler = { [weak self] in self?.showInfoPanel() }
         contentView.toggleAutoEatHandler = { [weak self] in self?.toggleAutoEat() }
+        contentView.debugFeedbackHandler = { [weak self] key in self?.triggerDebugFeedback(key) }
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -4036,7 +4189,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
     }
 
     func showInfoPanel() {
-        infoController.update(state: state, config: config)
+        infoController.update(state: state, config: config, summary: store.loadTokenSpendSummary())
         infoWindow.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -4045,6 +4198,60 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         config.autoEatEnabled.toggle()
         store.saveConfig(config)
         refresh(message: config.autoEatEnabled ? "它会继续根据状态自动吃粮。" : "自动吃粮已关闭，现在主要等你手动喂它。")
+    }
+
+    func triggerDebugFeedback(_ key: String) {
+        let now = Date().timeIntervalSince1970
+        let message: String
+
+        switch key {
+        case "birth_intro":
+            state.currentActivity = "刚从你的工作流里睁开眼"
+            state.currentRequest = "想先记住你的手感"
+            state.currentRequestAt = now
+            state.currentRequestIgnoreLevel = 0
+            message = "调试：首次诞生反馈。它正在确认你是不是它要跟着的人。"
+        case "bond_complete":
+            state.currentActivity = "把你的手感认真记住了"
+            state.lastImpactTier = 4
+            state.lastImpactValence = "bond"
+            state.lastImpactAt = now
+            message = "调试：认主完成反馈。它把你的第一下轻拍记进了身体里。"
+        case "meal_eaten":
+            state.currentActivity = "叼着新粮开心转圈"
+            state.lastConversionSummary = state.lastConversionSummary ?? "调试 Token -> 特制机能肉粒×1 / 700 粮值"
+            message = "调试：进食反馈。它闻到新鲜 Token 粮，自己先吃了一口。"
+        case "request_waiting":
+            state.currentActivity = "抬头等你回头"
+            state.currentRequest = "想让你轻拍一下"
+            state.currentRequestAt = now
+            state.currentRequestIgnoreLevel = 0
+            message = "调试：等待反馈。它没有打断你，只是在旁边攒着一点期待。"
+        case "interaction_matched_affinity":
+            state.currentActivity = "被你拍准后开心乱蹭"
+            state.lastImpactTier = 2
+            state.lastImpactValence = "affinity"
+            state.lastImpactAt = now
+            message = "调试：拍准反馈。这一下正好拍在它想要的节奏上。"
+        case "interaction_offbeat":
+            state.currentActivity = "被拍偏后歪头看你"
+            state.lastImpactTier = 2
+            state.lastImpactValence = "agitation"
+            state.lastImpactAt = now
+            message = "调试：拍偏反馈。它歪了一下头，像在说这下有点没接住。"
+        case "request_missed_twice":
+            state.currentActivity = "等太久后缩回尾巴里"
+            state.currentRequest = "刚才想让你理一下"
+            state.currentRequestAt = now - 180
+            state.currentRequestIgnoreLevel = 2
+            message = "调试：错过反馈。它等了一阵，情绪有点收回去了。"
+        default:
+            message = "调试：未知反馈 \(key)"
+        }
+
+        _ = setActiveFeedback(&state, key: key, source: "debug", priority: 100, duration: 4.5, now: now, resolvedOutcome: "debug", force: true)
+        state.lastCareSummary = message
+        refresh(message: message)
     }
 
     func backgroundTick() {
@@ -4353,7 +4560,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         contentView.logLabel.textColor = feedbackStyle.logColor
         contentView.logLabel.stringValue = "\(careSummary)\n\(recentFoodSummary(state))"
         contentView.hintLabel.stringValue = isBirthBondPending(state) ? "现在先轻拍一次，它会把你的手感记成自己的第一段关系。" : "点它拍一下，力度由它吃出来的互动能源决定"
-        infoController.update(state: state, config: config)
+        infoController.update(state: state, config: config, summary: store.loadTokenSpendSummary())
         persistWindowPosition()
         store.saveState(state)
         store.saveConfig(config)
@@ -4416,7 +4623,7 @@ do {
     app.run()
 } catch {
     let alert = NSAlert()
-    alert.messageText = "阿在桌宠启动失败"
+    alert.messageText = "吞金兽桌宠启动失败"
     alert.informativeText = error.localizedDescription
     alert.runModal()
 }

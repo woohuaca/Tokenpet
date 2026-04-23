@@ -13,5 +13,5 @@ rm -f "$RUNTIME_DIR/codex-bridge-state.json"
 rm -f "$RUNTIME_DIR/codex-bridge.pid"
 rm -f "$RUNTIME_DIR/desktop-pet.pid"
 
-echo "Reset 阿在 Token Pet runtime data."
+echo "Reset 吞金兽 Token Pet runtime data."
 echo "Run scripts/launch_desktop_pet.command to generate a fresh pet."

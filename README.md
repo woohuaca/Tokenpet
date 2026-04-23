@@ -81,7 +81,7 @@
 
 ## 这个插件是什么
 
-阿在 Token Pet 是一个虚拟电子宠物插件。
+吞金兽 Token Pet 是一个虚拟电子宠物插件。
 
 它把用户在 AI 工作中花掉的 Token 变成宠物吃下去的食物，并根据任务类型、产出质量和长期饮食结构，实时改变宠物的：
 
@@ -182,7 +182,7 @@ V1 当前聚焦四件事：
 - `TERMS.md`
   公开分发版使用条款说明
 - `scripts/codex_usage_bridge.py`
-  把 Codex 会话日志转换成桌宠可消费的自动喂养事件
+  把 Codex 会话日志转换成桌宠可消费的自动喂养事件，并生成完整 Token 账本汇总
 - `scripts/launch_desktop_pet.command`
   启动桌宠的本地脚本
 - `scripts/install_autostart.command`
@@ -407,7 +407,7 @@ V1 当前聚焦四件事：
 
 而在 Codex 插件入口里，这一版也已经把第一条 starter prompt 收成了：
 
-- `启动阿在 Token Pet 桌宠`
+- `启动吞金兽 Token Pet 桌宠`
 
 当前更接近的使用方式是：
 

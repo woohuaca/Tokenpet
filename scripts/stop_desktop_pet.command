@@ -48,4 +48,4 @@ wait_for_pattern_exit "$BRIDGE_PATH" 10 || true
 
 rm -f "$PET_PID_PATH" "$BRIDGE_PID_PATH"
 
-echo "Stopped 阿在 Token Pet and bridge."
+echo "Stopped 吞金兽 Token Pet and bridge."

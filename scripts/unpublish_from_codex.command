@@ -30,4 +30,4 @@ fi
 
 rm -rf "$CODEX_CACHE_ROOT"
 
-echo "Removed 阿在 Token Pet from Codex local marketplace."
+echo "Removed 吞金兽 Token Pet from Codex local marketplace."

@@ -2,7 +2,9 @@
 
 import json
 import os
+import sys
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,6 +19,7 @@ STATE_PATH = RUNTIME_DIR / "codex-bridge-state.json"
 FEED_PATH = RUNTIME_DIR / "codex-feed.json"
 SPEND_LEDGER_PATH = RUNTIME_DIR / "token-spend-ledger.jsonl"
 SPEND_LEDGER_INDEX_PATH = RUNTIME_DIR / "token-spend-ledger-index.json"
+SPEND_SUMMARY_PATH = RUNTIME_DIR / "token-spend-summary.json"
 PID_PATH = RUNTIME_DIR / "codex-bridge.pid"
 
 
@@ -46,9 +49,162 @@ KEYWORD_GROUPS = {
     ],
 }
 
+TASK_LABELS = {
+    "coding": "开发",
+    "writing": "写作",
+    "research": "研究",
+    "review": "评审",
+    "planning": "规划",
+    "meeting": "会议",
+    "support": "支持",
+    "idle": "空转",
+}
+
+QUALITY_LABELS = {
+    "breakthrough": "高质",
+    "solid": "稳定",
+    "partial": "偏薄",
+    "waste": "空耗",
+}
+
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def local_now():
+    return datetime.now().astimezone()
+
+
+def parse_event_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone()
+    except Exception:
+        return None
+
+
+def normalized_pet_tokens(real_tokens):
+    if real_tokens <= 0:
+        return 0
+    return min(16000, max(700, round(real_tokens * 0.08, 1)))
+
+
+def empty_summary_bucket(label):
+    return {
+        "label": label,
+        "count": 0,
+        "real_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "reasoning_tokens": 0,
+        "pet_energy": 0,
+        "by_task_type": defaultdict(lambda: {"count": 0, "real_tokens": 0, "pet_energy": 0}),
+        "by_quality": defaultdict(lambda: {"count": 0, "real_tokens": 0, "pet_energy": 0}),
+    }
+
+
+def add_to_summary_bucket(bucket, event):
+    real_tokens = int(event.get("real_tokens") or 0)
+    input_tokens = int(event.get("input_tokens") or 0)
+    output_tokens = int(event.get("output_tokens") or 0)
+    reasoning_tokens = int(event.get("reasoning_tokens") or 0)
+    pet_energy = normalized_pet_tokens(real_tokens)
+    task_type = event.get("task_type") or "unknown"
+    quality = event.get("quality") or "unknown"
+
+    bucket["count"] += 1
+    bucket["real_tokens"] += real_tokens
+    bucket["input_tokens"] += input_tokens
+    bucket["output_tokens"] += output_tokens
+    bucket["reasoning_tokens"] += reasoning_tokens
+    bucket["pet_energy"] += pet_energy
+
+    for group_key, name in [("by_task_type", task_type), ("by_quality", quality)]:
+        group = bucket[group_key][name]
+        group["count"] += 1
+        group["real_tokens"] += real_tokens
+        group["pet_energy"] += pet_energy
+
+
+def freeze_summary_bucket(bucket):
+    frozen = dict(bucket)
+    frozen["pet_energy"] = round(frozen["pet_energy"], 1)
+    for group_key in ["by_task_type", "by_quality"]:
+        frozen[group_key] = {
+            key: {
+                "label": TASK_LABELS.get(key) or QUALITY_LABELS.get(key) or key,
+                "count": value["count"],
+                "real_tokens": value["real_tokens"],
+                "pet_energy": round(value["pet_energy"], 1),
+            }
+            for key, value in sorted(
+                frozen[group_key].items(),
+                key=lambda item: (-item[1]["real_tokens"], item[0]),
+            )
+        }
+    return frozen
+
+
+def compact_summary_event(event):
+    return {
+        "id": event.get("id"),
+        "timestamp": event.get("timestamp"),
+        "source": event.get("source"),
+        "task_type": event.get("task_type"),
+        "quality": event.get("quality"),
+        "real_tokens": event.get("real_tokens", 0),
+        "input_tokens": event.get("input_tokens", 0),
+        "output_tokens": event.get("output_tokens", 0),
+        "reasoning_tokens": event.get("reasoning_tokens", 0),
+        "pet_energy": normalized_pet_tokens(event.get("real_tokens") or 0),
+    }
+
+
+def iter_spend_ledger_events():
+    if not SPEND_LEDGER_PATH.exists():
+        return
+    with SPEND_LEDGER_PATH.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            if item.get("id"):
+                yield item
+
+
+def write_spend_summary():
+    now = local_now()
+    today_key = now.date()
+    week_start = today_key.fromordinal(today_key.toordinal() - today_key.weekday())
+
+    summary = {
+        "updated_at": utc_now(),
+        "timezone": now.tzname(),
+        "today": empty_summary_bucket(today_key.isoformat()),
+        "week": empty_summary_bucket(f"{week_start.isoformat()}~{today_key.isoformat()}"),
+        "all": empty_summary_bucket("all"),
+        "latest_events": [],
+    }
+
+    latest = []
+    for event in iter_spend_ledger_events() or []:
+        event_dt = parse_event_datetime(event.get("timestamp")) or parse_event_datetime(event.get("recorded_at"))
+        add_to_summary_bucket(summary["all"], event)
+        if event_dt and event_dt.date() == today_key:
+            add_to_summary_bucket(summary["today"], event)
+        if event_dt and week_start <= event_dt.date() <= today_key:
+            add_to_summary_bucket(summary["week"], event)
+        latest.append(compact_summary_event(event))
+        latest = latest[-12:]
+
+    summary["today"] = freeze_summary_bucket(summary["today"])
+    summary["week"] = freeze_summary_bucket(summary["week"])
+    summary["all"] = freeze_summary_bucket(summary["all"])
+    summary["latest_events"] = latest
+    save_json(SPEND_SUMMARY_PATH, summary)
 
 
 def default_state():
@@ -212,13 +368,17 @@ def append_spend_ledger_event(event):
 
 
 def backfill_spend_ledger_from_feed():
+    added = 0
     feed = load_feed()
     for event in feed.get("events", []):
-        append_spend_ledger_event(event)
+        if append_spend_ledger_event(event):
+            added += 1
+    return added
 
 
 def append_feed_event(event):
     append_spend_ledger_event(event)
+    write_spend_summary()
     feed = load_feed()
     feed["events"] = [item for item in feed.get("events", []) if item.get("id") != event["id"]]
     feed["events"].append(event)
@@ -407,6 +567,7 @@ def main():
     state = load_json(STATE_PATH, default_state())
     backfill_spend_ledger_from_feed()
     backfill_spend_ledger_from_all_sessions()
+    write_spend_summary()
 
     while True:
         latest_session = find_latest_session()
@@ -428,6 +589,11 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        if "--once" in sys.argv:
+            backfill_spend_ledger_from_feed()
+            backfill_spend_ledger_from_all_sessions()
+            write_spend_summary()
+        else:
+            main()
     except KeyboardInterrupt:
         pass
