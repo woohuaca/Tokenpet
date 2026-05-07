@@ -97,6 +97,9 @@ struct PetState: Codable {
     var activeFeedbackDuration: Double?
     var activeFeedbackPriority: Int?
     var lastResolvedRequestOutcome: String?
+    var lastGrowthBalanceTitle: String?
+    var lastGrowthPhaseShiftAt: Double?
+    var lastGrowthPhaseShiftSummary: String?
 }
 
 struct StageInfo {
@@ -429,7 +432,10 @@ let defaultState = PetState(
     activeFeedbackAt: nil,
     activeFeedbackDuration: nil,
     activeFeedbackPriority: nil,
-    lastResolvedRequestOutcome: "none"
+    lastResolvedRequestOutcome: "none",
+    lastGrowthBalanceTitle: nil,
+    lastGrowthPhaseShiftAt: nil,
+    lastGrowthPhaseShiftSummary: nil
 )
 
 let defaultConfig = PetConfig(
@@ -1859,10 +1865,58 @@ func growthExplanationMetabolism(_ state: PetState) -> [String] {
 func growthExplanationTendency(_ state: PetState) -> [String] {
     let tendency = dominantGrowthTendency(state)
     let phase = growthBalanceProfile(state)
-    return [
+    var lines = [
         "当前长势判断：它现在更偏\(tendency.title)。",
         "最近这几轮的代谢底色是“\(phase.title)”，所以它会慢慢长成\(tendency.note)。"
     ]
+    if let summary = state.lastGrowthPhaseShiftSummary,
+       let at = state.lastGrowthPhaseShiftAt,
+       Date().timeIntervalSince1970 - at < 12 * 3600 {
+        lines.append("最近变化：\(summary)")
+    }
+    return lines
+}
+
+func growthPhaseShiftSummary(from previous: String, to next: String) -> String {
+    switch (previous, next) {
+    case ("舒展", "亢奋"):
+        return "它刚从稳稳长大，转进了更猛、更亮、也更容易躁起来的节奏。"
+    case ("舒展", "压仓"):
+        return "它刚从稳定代谢，转进了有点胀仓的状态，说明这几轮进粮开始偏满了。"
+    case ("舒展", "节制"):
+        return "它刚从稳定长势，转进了更克制、更细腻的节奏。"
+    case ("亢奋", "压仓"):
+        return "它刚从高代谢猛长，转进了压仓发胀，说明这股劲已经开始堆住了。"
+    case ("亢奋", "舒展"):
+        return "它刚把那股猛劲收回来一点，重新回到更稳的长势里。"
+    case ("节制", "舒展"):
+        return "它刚从克制慢养里松开一点，开始回到更顺、更稳的代谢节奏。"
+    case ("压仓", "舒展"):
+        return "它刚把胀着的那股劲消下去一些，重新回到了更舒服的长势里。"
+    case ("压仓", "亢奋"):
+        return "它刚从发胀里抖开一点，回到了更有冲劲但还没失衡的位置。"
+    default:
+        return "它刚从\(previous)转到了\(next)，说明这几轮的工作和消化方式已经把它养到了新的阶段。"
+    }
+}
+
+func syncGrowthBalancePhase(_ state: inout PetState) -> String? {
+    let currentTitle = growthBalanceProfile(state).title
+
+    guard let previousTitle = state.lastGrowthBalanceTitle else {
+        state.lastGrowthBalanceTitle = currentTitle
+        return nil
+    }
+
+    guard previousTitle != currentTitle else { return nil }
+
+    state.lastGrowthBalanceTitle = currentTitle
+    state.lastGrowthPhaseShiftAt = Date().timeIntervalSince1970
+    let summary = growthPhaseShiftSummary(from: previousTitle, to: currentTitle)
+    state.lastGrowthPhaseShiftSummary = summary
+    state.lastCareSummary = summary
+    appendFoodLog(&state, entry: "长势切换：\(previousTitle) -> \(currentTitle)")
+    return summary
 }
 
 func growthExplanationEmotion(_ state: PetState) -> [String] {
@@ -2508,6 +2562,9 @@ final class PetStore {
         next.activeFeedbackDuration = next.activeFeedbackDuration ?? nil
         next.activeFeedbackPriority = next.activeFeedbackPriority ?? nil
         next.lastResolvedRequestOutcome = next.lastResolvedRequestOutcome ?? "none"
+        next.lastGrowthBalanceTitle = next.lastGrowthBalanceTitle ?? growthBalanceProfile(next).title
+        next.lastGrowthPhaseShiftAt = next.lastGrowthPhaseShiftAt ?? nil
+        next.lastGrowthPhaseShiftSummary = next.lastGrowthPhaseShiftSummary ?? nil
         return next
     }
 
@@ -4476,7 +4533,11 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         clearExpiredFeedback(&state)
         state = PetEngine.decay(state, hours: 1)
         if let routineMessage = performAutonomousRoutine() {
-            refresh(message: routineMessage)
+            refresh(message: syncGrowthBalancePhase(&state) ?? routineMessage)
+            return
+        }
+        if let phaseMessage = syncGrowthBalancePhase(&state) {
+            refresh(message: phaseMessage)
             return
         }
         let growthPhase = growthBalanceProfile(state)
@@ -4600,14 +4661,14 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         _ = setActiveFeedback(&state, key: "meal_eaten", source: "feed", priority: 50, duration: 2.4)
         state.lastCareSummary = "刚吃了\(food)，正在\(state.currentActivity ?? "慢悠悠巡桌")"
         appendFoodLog(&state, entry: "自动吃掉：\(food)")
-        refresh(message: reason)
+        refresh(message: syncGrowthBalancePhase(&state) ?? reason)
         return true
     }
 
     func applyDecay() {
         state = PetEngine.decay(state, hours: 3)
         state.lastCareSummary = "自己在桌边晃了一阵，状态慢慢起伏"
-        refresh(message: "时间过去了一会儿，状态在自然变化。")
+        refresh(message: syncGrowthBalancePhase(&state) ?? "时间过去了一会儿，状态在自然变化。")
     }
 
     func performInteraction() {
@@ -4661,7 +4722,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
             appendFoodLog(&state, entry: "第一次认主：它记住了你的手感")
             finalMessage = "\(petDisplayName(state)) 轻轻贴过来，把你的手感记进了自己身体里。现在，它正式开始跟着你一起长大了。"
         }
-        refresh(message: finalMessage)
+        refresh(message: syncGrowthBalancePhase(&state) ?? finalMessage)
     }
 
     func performAutonomousRoutine() -> String? {
@@ -4814,7 +4875,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
                 didAutoEat = eatFromInventory(preferredTaskType: event.task_type, quality: event.quality, reason: "它闻到\(event.source)送来的新鲜\(food)，自己先吃了一口。")
             } else {
                 didAutoEat = false
-                refresh(message: summary)
+                refresh(message: syncGrowthBalancePhase(&state) ?? summary)
             }
 
             appendTokenLedger(&state, entry: TokenLedgerEntry(
