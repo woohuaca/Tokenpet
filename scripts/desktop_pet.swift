@@ -2869,7 +2869,9 @@ final class PetSceneView: NSView {
 
         let activity = currentActivityText(state)
         let growthTendency = dominantGrowthTendency(state).title
+        let balancePhase = growthBalanceProfile(state)
         let identityVisual = identityVisualProfile(state)
+        let requestProfile = interactionRequestProfile(state)
         let birthPending = isBirthBondPending(state)
         let activeFeedback = currentActiveFeedback(state)
         let feedbackKey = activeFeedback?.key
@@ -2975,6 +2977,17 @@ final class PetSceneView: NSView {
             return
         }
 
+        drawGrowthPhaseAura(
+            phaseTitle: balancePhase.title,
+            bodyOriginX: bodyOriginX,
+            bodyOriginY: bodyOriginY,
+            bodyWidth: bodyWidth,
+            bodyHeight: bodyHeight,
+            accent: accent,
+            stageScale: stageScale,
+            animationPhase: animationPhase
+        )
+
         let body = NSBezierPath(roundedRect: NSRect(x: bodyOriginX, y: bodyOriginY, width: bodyWidth, height: bodyHeight), xRadius: 48 * stageScale, yRadius: 48 * stageScale)
         bodyColor.setFill()
         body.fill()
@@ -3008,6 +3021,17 @@ final class PetSceneView: NSView {
 
         drawGeneratedTraits(profile: trait, bodyOriginX: bodyOriginX, bodyOriginY: bodyOriginY, bodyWidth: bodyWidth, bodyHeight: bodyHeight, accent: accent, bodyColor: bodyColor, stageScale: stageScale, wag: wag)
         drawIdentityAccessory(profile: identityVisual, bodyOriginX: bodyOriginX, bodyOriginY: bodyOriginY, bodyWidth: bodyWidth, bodyHeight: bodyHeight, accent: accent, bodyColor: bodyColor)
+        if !birthPending && !isSulking {
+            drawRequestCharm(
+                profile: requestProfile,
+                bodyOriginX: bodyOriginX,
+                bodyOriginY: bodyOriginY,
+                bodyWidth: bodyWidth,
+                bodyHeight: bodyHeight,
+                accent: accent,
+                animationPhase: animationPhase
+            )
+        }
 
         NSColor(calibratedRed: 1.0, green: 0.86, blue: 0.67, alpha: 0.86).setFill()
         NSBezierPath(ovalIn: NSRect(x: bodyOriginX + bodyWidth * 0.33 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.50, width: 40 * stageScale, height: 28 * stageScale)).fill()
@@ -3608,6 +3632,147 @@ final class PetSceneView: NSView {
             }
         default:
             break
+        }
+    }
+
+    func drawGrowthPhaseAura(phaseTitle: String, bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat, animationPhase: CGFloat) {
+        switch phaseTitle {
+        case "舒展":
+            for index in 0..<4 {
+                let angle = animationPhase * 0.45 + CGFloat(index) * (.pi * 0.5)
+                let radiusX = bodyWidth * 0.40 + CGFloat(index) * 3
+                let radiusY = bodyHeight * 0.24 + CGFloat(index % 2) * 8
+                let x = bodyOriginX + bodyWidth * 0.5 + cos(angle) * radiusX
+                let y = bodyOriginY + bodyHeight * 0.46 + sin(angle) * radiusY
+                let mote = NSBezierPath(ovalIn: NSRect(x: x - 4, y: y - 4, width: 8, height: 8))
+                accent.withAlphaComponent(0.18 + Double(index) * 0.05).setFill()
+                mote.fill()
+            }
+            let orbit = NSBezierPath(ovalIn: NSRect(x: bodyOriginX - 10, y: bodyOriginY + 18, width: bodyWidth + 20, height: bodyHeight * 0.70))
+            accent.withAlphaComponent(0.10).setStroke()
+            orbit.lineWidth = 1.4
+            orbit.stroke()
+        case "节制":
+            for index in 0..<3 {
+                let drift = abs(sin(animationPhase * 0.7 + CGFloat(index) * 0.9)) * 8
+                let dewRect = NSRect(
+                    x: bodyOriginX + bodyWidth * (0.22 + CGFloat(index) * 0.18),
+                    y: bodyOriginY + bodyHeight * 0.84 - drift,
+                    width: 6 + CGFloat(index),
+                    height: 8 + CGFloat(index)
+                )
+                let dew = NSBezierPath(ovalIn: dewRect)
+                NSColor.white.withAlphaComponent(0.26 + Double(index) * 0.08).setFill()
+                dew.fill()
+            }
+            let calmArc = NSBezierPath()
+            calmArc.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.18, y: bodyOriginY + bodyHeight * 0.92))
+            calmArc.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * 0.82, y: bodyOriginY + bodyHeight * 0.92),
+                controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.36, y: bodyOriginY + bodyHeight * 0.82),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.64, y: bodyOriginY + bodyHeight * 0.82)
+            )
+            calmArc.lineWidth = 2
+            accent.withAlphaComponent(0.14).setStroke()
+            calmArc.stroke()
+        case "亢奋":
+            for index in 0..<3 {
+                let angle = animationPhase * 0.95 + CGFloat(index) * (.pi * 0.66)
+                let x = bodyOriginX + bodyWidth * 0.5 + cos(angle) * (bodyWidth * 0.48)
+                let y = bodyOriginY + bodyHeight * 0.44 + sin(angle) * (bodyHeight * 0.30)
+                let streak = NSBezierPath()
+                streak.move(to: NSPoint(x: x - 7, y: y + 2))
+                streak.line(to: NSPoint(x: x + 6, y: y - 4))
+                streak.line(to: NSPoint(x: x, y: y + 8))
+                streak.lineWidth = index == 0 ? 2.8 : 2.0
+                accent.withAlphaComponent(0.24 + Double(index) * 0.08).setStroke()
+                streak.stroke()
+            }
+            for index in 0..<2 {
+                let pulse = abs(sin(animationPhase * 1.6 + CGFloat(index)))
+                let ringRect = NSRect(
+                    x: bodyOriginX + bodyWidth * 0.5 - (46 + pulse * 10) / 2,
+                    y: bodyOriginY + bodyHeight * 0.48 - (28 + pulse * 6) / 2,
+                    width: 46 + pulse * 10,
+                    height: 28 + pulse * 6
+                )
+                let ring = NSBezierPath(ovalIn: ringRect)
+                accent.withAlphaComponent(0.10 - Double(index) * 0.02).setStroke()
+                ring.lineWidth = 1.6
+                ring.stroke()
+            }
+        case "压仓":
+            for index in 0..<3 {
+                let wobble = sin(animationPhase * 0.8 + CGFloat(index) * 0.8) * 4
+                let pebble = NSBezierPath(ovalIn: NSRect(
+                    x: bodyOriginX + bodyWidth * (0.18 + CGFloat(index) * 0.22),
+                    y: bodyOriginY + bodyHeight * 0.76 + wobble,
+                    width: 10 + CGFloat(index) * 2,
+                    height: 10 + CGFloat(index)
+                ))
+                NSColor(calibratedRed: 0.96, green: 0.78, blue: 0.48, alpha: 0.20 + Double(index) * 0.06).setFill()
+                pebble.fill()
+            }
+            for index in 0..<2 {
+                let wave = NSBezierPath()
+                let y = bodyOriginY + bodyHeight * (0.72 + CGFloat(index) * 0.08)
+                wave.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.18, y: y))
+                wave.curve(
+                    to: NSPoint(x: bodyOriginX + bodyWidth * 0.82, y: y),
+                    controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.34, y: y - 8),
+                    controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.66, y: y + 8)
+                )
+                wave.lineWidth = 2
+                NSColor(calibratedRed: 0.90, green: 0.72, blue: 0.44, alpha: 0.18 - Double(index) * 0.04).setStroke()
+                wave.stroke()
+            }
+        default:
+            break
+        }
+    }
+
+    func drawRequestCharm(profile: InteractionRequestProfile, bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, animationPhase: CGFloat) {
+        guard profile.actionable else { return }
+
+        let bob = sin(animationPhase * 1.4) * 6
+        if profile.desiredValence == "affinity" {
+            let hx = bodyOriginX - 12
+            let hy = bodyOriginY + bodyHeight * 0.20 + bob
+            let heart = NSBezierPath()
+            heart.move(to: NSPoint(x: hx, y: hy + 10))
+            heart.curve(to: NSPoint(x: hx - 9, y: hy + 1), controlPoint1: NSPoint(x: hx - 5, y: hy - 1), controlPoint2: NSPoint(x: hx - 9, y: hy + 5))
+            heart.curve(to: NSPoint(x: hx, y: hy - 7), controlPoint1: NSPoint(x: hx - 9, y: hy - 4), controlPoint2: NSPoint(x: hx - 5, y: hy - 7))
+            heart.curve(to: NSPoint(x: hx + 9, y: hy + 1), controlPoint1: NSPoint(x: hx + 5, y: hy - 7), controlPoint2: NSPoint(x: hx + 9, y: hy - 4))
+            heart.curve(to: NSPoint(x: hx, y: hy + 10), controlPoint1: NSPoint(x: hx + 9, y: hy + 5), controlPoint2: NSPoint(x: hx + 5, y: hy))
+            accent.withAlphaComponent(0.34).setFill()
+            heart.fill()
+
+            let tether = NSBezierPath()
+            tether.move(to: NSPoint(x: hx + 6, y: hy + 6))
+            tether.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * 0.18, y: bodyOriginY + bodyHeight * 0.42),
+                controlPoint1: NSPoint(x: hx + 16, y: hy + 10),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.04, y: bodyOriginY + bodyHeight * 0.32)
+            )
+            tether.lineWidth = 1.6
+            accent.withAlphaComponent(0.16).setStroke()
+            tether.stroke()
+        } else {
+            let zx = bodyOriginX + bodyWidth + 12
+            let zy = bodyOriginY + bodyHeight * 0.18 + bob
+            let bolt = NSBezierPath()
+            bolt.move(to: NSPoint(x: zx, y: zy))
+            bolt.line(to: NSPoint(x: zx + 10, y: zy - 4))
+            bolt.line(to: NSPoint(x: zx + 4, y: zy + 8))
+            bolt.line(to: NSPoint(x: zx + 14, y: zy + 4))
+            bolt.lineWidth = 2.6
+            accent.withAlphaComponent(0.34).setStroke()
+            bolt.stroke()
+
+            let orbit = NSBezierPath(ovalIn: NSRect(x: zx - 8, y: zy - 8, width: 20, height: 20))
+            accent.withAlphaComponent(0.10).setStroke()
+            orbit.lineWidth = 1.2
+            orbit.stroke()
         }
     }
 
