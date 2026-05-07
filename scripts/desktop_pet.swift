@@ -2912,9 +2912,9 @@ final class PetSceneView: NSView {
         let dash = isRunning ? CGFloat(abs(sin(animationPhase * (isBursting ? 3.0 : 2.6))) * (isBursting ? 12 : 8)) : 0
         let impactPower = impact.map { max(0, 1.0 - $0.age / 1.3) } ?? 0
         let impactShift = CGFloat((impact?.valence == "agitation" ? 1 : -1) * Int(round((impactPower) * Double((impact?.tier ?? 0) * 4))))
-        let earTilt: CGFloat = (isSulking ? 12 : (isWaiting ? 6 : ((birthPending || isBirthIntro) ? -6 : 0))) + (isStuffy ? 4 : 0) - (isBursting ? 3 : 0) - (isMealFeedback ? 2 : 0)
-        let headTilt: CGFloat = (isOffBeat ? 6 : (isSulking ? -5 : (isMealFeedback ? 2 : 0))) + (isTender ? -2 : 0) + (isBursting ? 2 : 0) + identityVisual.browTiltBias
-        let tailDrop: CGFloat = (isSulking ? 18 : (isWaiting ? 10 : 0)) + (isStuffy ? 8 : 0) - (isBursting ? 4 : 0) + (isMealFeedback ? 4 : 0)
+        let earTilt: CGFloat = (isSulking ? 12 : (isWaiting ? 6 : ((birthPending || isBirthIntro) ? -6 : 0))) + (isStuffy ? 8 : 0) - (isBursting ? 10 : 0) - (isMealFeedback ? 2 : 0) - (isTender ? 3 : 0)
+        let headTilt: CGFloat = (isOffBeat ? 6 : (isSulking ? -5 : (isMealFeedback ? 2 : 0))) + (isTender ? -5 : 0) + (isBursting ? 7 : 0) + identityVisual.browTiltBias
+        let tailDrop: CGFloat = (isSulking ? 18 : (isWaiting ? 10 : 0)) + (isStuffy ? 12 : 0) - (isBursting ? 10 : 0) + (isMealFeedback ? 4 : 0) - (isTender ? 4 : 0)
         let stageScale: CGFloat
         switch state.stage {
         case "egg": stageScale = 0.78
@@ -2924,8 +2924,8 @@ final class PetSceneView: NSView {
         case "adult": stageScale = 1.08
         default: stageScale = 1.14
         }
-        let bodyWidthAdjust: CGFloat = (isTender ? -6 : (isStuffy ? 16 : (isBursting ? 4 : 0))) + identityVisual.bodyWidthBias
-        let bodyHeightAdjust: CGFloat = (isTender ? -2 : (isStuffy ? 10 : 0)) + identityVisual.bodyHeightBias
+        let bodyWidthAdjust: CGFloat = (isTender ? -14 : (isStuffy ? 22 : (isBursting ? -10 : 0))) + identityVisual.bodyWidthBias
+        let bodyHeightAdjust: CGFloat = (isTender ? -6 : (isStuffy ? 12 : (isBursting ? 14 : 0))) + identityVisual.bodyHeightBias
 
         let shadowRect = NSRect(
             x: 62 - dash * 0.3 + impactShift * 0.4 + (isOffBeat ? 4 : 0),
@@ -2988,7 +2988,8 @@ final class PetSceneView: NSView {
             animationPhase: animationPhase
         )
 
-        let body = NSBezierPath(roundedRect: NSRect(x: bodyOriginX, y: bodyOriginY, width: bodyWidth, height: bodyHeight), xRadius: 48 * stageScale, yRadius: 48 * stageScale)
+        let bodyCornerRadius = isBursting ? 40 * stageScale : (isTender ? 54 * stageScale : 48 * stageScale)
+        let body = NSBezierPath(roundedRect: NSRect(x: bodyOriginX, y: bodyOriginY, width: bodyWidth, height: bodyHeight), xRadius: bodyCornerRadius, yRadius: bodyCornerRadius)
         bodyColor.setFill()
         body.fill()
 
@@ -3005,6 +3006,30 @@ final class PetSceneView: NSView {
                 isWaiting: isWaiting,
                 isMealFeedback: isMealFeedback
             )
+        } else if isBursting {
+            drawBurstingDrakeOverlay(
+                bodyOriginX: bodyOriginX,
+                bodyOriginY: bodyOriginY,
+                bodyWidth: bodyWidth,
+                bodyHeight: bodyHeight,
+                accent: accent,
+                stageScale: stageScale,
+                animationPhase: animationPhase,
+                isRunning: isRunning,
+                isWaiting: isWaiting
+            )
+        } else if isTender {
+            drawClingSpriteOverlay(
+                bodyOriginX: bodyOriginX,
+                bodyOriginY: bodyOriginY,
+                bodyWidth: bodyWidth,
+                bodyHeight: bodyHeight,
+                accent: accent,
+                stageScale: stageScale,
+                animationPhase: animationPhase,
+                isWaiting: isWaiting,
+                isSnuggling: isSnuggling
+            )
         }
 
         let tail = NSBezierPath()
@@ -3014,7 +3039,7 @@ final class PetSceneView: NSView {
             controlPoint1: NSPoint(x: bodyOriginX + bodyWidth + 6, y: bodyOriginY + bodyHeight * 0.64 + tailDrop * 0.4),
             controlPoint2: NSPoint(x: bodyOriginX + bodyWidth + 14 + wag * 0.45, y: bodyOriginY + bodyHeight * 0.64 + tailDrop * 0.8)
         )
-        tail.lineWidth = 10
+        tail.lineWidth = isBursting ? 12 : (isTender ? 9 : 10)
         tail.lineCapStyle = .round
         bodyColor.withAlphaComponent(0.92).setStroke()
         tail.stroke()
@@ -3023,8 +3048,8 @@ final class PetSceneView: NSView {
         NSBezierPath(ovalIn: NSRect(x: bodyOriginX + 8, y: bodyOriginY - 14 * stageScale + (isRunning ? dash * 0.4 : 0), width: 28 * stageScale, height: 44 * stageScale)).fill()
         NSBezierPath(ovalIn: NSRect(x: bodyOriginX + bodyWidth - 36 * stageScale, y: bodyOriginY - 14 * stageScale + (isRunning ? -dash * 0.25 : 0), width: 28 * stageScale, height: 44 * stageScale)).fill()
 
-        let frontPawLeft = NSBezierPath(roundedRect: NSRect(x: bodyOriginX + bodyWidth * 0.24, y: bodyOriginY + bodyHeight - 10 - pawLift, width: 16 * stageScale, height: 24 * stageScale), xRadius: 9, yRadius: 9)
-        let frontPawRight = NSBezierPath(roundedRect: NSRect(x: bodyOriginX + bodyWidth * 0.58, y: bodyOriginY + bodyHeight - 10 + (isRunning ? dash * 0.35 : 0), width: 16 * stageScale, height: 24 * stageScale), xRadius: 9, yRadius: 9)
+        let frontPawLeft = NSBezierPath(roundedRect: NSRect(x: bodyOriginX + bodyWidth * (isTender ? 0.20 : (isBursting ? 0.22 : 0.24)), y: bodyOriginY + bodyHeight - 10 - pawLift, width: (isTender ? 18 : 16) * stageScale, height: 24 * stageScale), xRadius: 9, yRadius: 9)
+        let frontPawRight = NSBezierPath(roundedRect: NSRect(x: bodyOriginX + bodyWidth * (isTender ? 0.56 : (isBursting ? 0.60 : 0.58)), y: bodyOriginY + bodyHeight - 10 + (isRunning ? dash * 0.35 : 0), width: (isTender ? 18 : 16) * stageScale, height: 24 * stageScale), xRadius: 9, yRadius: 9)
         bodyColor.withAlphaComponent(0.98).setFill()
         frontPawLeft.fill()
         frontPawRight.fill()
@@ -3048,8 +3073,10 @@ final class PetSceneView: NSView {
             )
         }
 
+        let muzzleWidth = (isTender ? 46 : (isStuffy ? 44 : (isBursting ? 34 : 40))) * stageScale
+        let muzzleHeight = (isTender ? 30 : (isStuffy ? 30 : (isBursting ? 24 : 28))) * stageScale
         NSColor(calibratedRed: 1.0, green: 0.86, blue: 0.67, alpha: 0.86).setFill()
-        NSBezierPath(ovalIn: NSRect(x: bodyOriginX + bodyWidth * 0.33 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.50, width: 40 * stageScale, height: 28 * stageScale)).fill()
+        NSBezierPath(ovalIn: NSRect(x: bodyOriginX + bodyWidth * 0.33 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.50, width: muzzleWidth, height: muzzleHeight)).fill()
 
         let eyeY: CGFloat = bodyOriginY + bodyHeight * 0.31
         NSColor(calibratedRed: 0.15, green: 0.12, blue: 0.10, alpha: 1.0).setFill()
@@ -3057,24 +3084,46 @@ final class PetSceneView: NSView {
         let rightEyeX = bodyOriginX + bodyWidth * 0.58 + headTilt * 0.2
         let leftEyeY = eyeY + (isOffBeat ? 2 : 0)
         let rightEyeY = eyeY + (isSulking ? 3 : 0)
+        let eyeWidth: CGFloat = isTender ? 13 : (isBursting ? 8 : (isStuffy ? 11 : 10))
+        let eyeHeight: CGFloat = isTender ? 17 : (isBursting ? 16 : 14)
         if blink || mood == "sleepy" {
-            NSBezierPath(rect: NSRect(x: leftEyeX, y: leftEyeY + 6, width: 10, height: 2)).fill()
-            NSBezierPath(rect: NSRect(x: rightEyeX, y: rightEyeY + 6, width: 10, height: 2)).fill()
+            NSBezierPath(rect: NSRect(x: leftEyeX, y: leftEyeY + 6, width: eyeWidth, height: 2)).fill()
+            NSBezierPath(rect: NSRect(x: rightEyeX, y: rightEyeY + 6, width: eyeWidth, height: 2)).fill()
         } else if isWaiting || isSulking {
             let leftEye = NSBezierPath()
             leftEye.move(to: NSPoint(x: leftEyeX - 1, y: leftEyeY + 9))
-            leftEye.curve(to: NSPoint(x: leftEyeX + 11, y: leftEyeY + 9), controlPoint1: NSPoint(x: leftEyeX + 3, y: leftEyeY + 13), controlPoint2: NSPoint(x: leftEyeX + 7, y: leftEyeY + 13))
+            leftEye.curve(to: NSPoint(x: leftEyeX + eyeWidth + 1, y: leftEyeY + 9), controlPoint1: NSPoint(x: leftEyeX + 3, y: leftEyeY + (isTender ? 15 : 13)), controlPoint2: NSPoint(x: leftEyeX + eyeWidth - 1, y: leftEyeY + (isTender ? 15 : 13)))
             leftEye.lineWidth = 2.4
             leftEye.stroke()
 
             let rightEye = NSBezierPath()
             rightEye.move(to: NSPoint(x: rightEyeX - 1, y: rightEyeY + 9))
-            rightEye.curve(to: NSPoint(x: rightEyeX + 11, y: rightEyeY + 9), controlPoint1: NSPoint(x: rightEyeX + 3, y: rightEyeY + 13), controlPoint2: NSPoint(x: rightEyeX + 7, y: rightEyeY + 13))
+            rightEye.curve(to: NSPoint(x: rightEyeX + eyeWidth + 1, y: rightEyeY + 9), controlPoint1: NSPoint(x: rightEyeX + 3, y: rightEyeY + (isTender ? 15 : 13)), controlPoint2: NSPoint(x: rightEyeX + eyeWidth - 1, y: rightEyeY + (isTender ? 15 : 13)))
             rightEye.lineWidth = 2.4
             rightEye.stroke()
         } else {
-            NSBezierPath(ovalIn: NSRect(x: leftEyeX, y: leftEyeY, width: 10, height: isOffBeat ? 12 : 14)).fill()
-            NSBezierPath(ovalIn: NSRect(x: rightEyeX, y: rightEyeY, width: 10, height: isSulking ? 12 : 14)).fill()
+            NSBezierPath(ovalIn: NSRect(x: leftEyeX, y: leftEyeY, width: eyeWidth, height: isOffBeat ? eyeHeight - 2 : eyeHeight)).fill()
+            NSBezierPath(ovalIn: NSRect(x: rightEyeX, y: rightEyeY, width: eyeWidth, height: isSulking ? eyeHeight - 2 : eyeHeight)).fill()
+            if isTender {
+                NSColor.white.withAlphaComponent(0.72).setFill()
+                NSBezierPath(ovalIn: NSRect(x: leftEyeX + 2, y: leftEyeY + 2, width: 3, height: 4)).fill()
+                NSBezierPath(ovalIn: NSRect(x: rightEyeX + 2, y: rightEyeY + 2, width: 3, height: 4)).fill()
+                NSColor(calibratedRed: 0.15, green: 0.12, blue: 0.10, alpha: 1.0).setFill()
+            }
+        }
+
+        if !blink && isBursting {
+            let browLeft = NSBezierPath()
+            browLeft.move(to: NSPoint(x: leftEyeX - 2, y: leftEyeY - 3))
+            browLeft.line(to: NSPoint(x: leftEyeX + eyeWidth + 1, y: leftEyeY - 8))
+            browLeft.lineWidth = 2.2
+            browLeft.stroke()
+
+            let browRight = NSBezierPath()
+            browRight.move(to: NSPoint(x: rightEyeX - 1, y: rightEyeY - 8))
+            browRight.line(to: NSPoint(x: rightEyeX + eyeWidth + 2, y: rightEyeY - 3))
+            browRight.lineWidth = 2.2
+            browRight.stroke()
         }
 
         let mouth = NSBezierPath()
@@ -3082,6 +3131,17 @@ final class PetSceneView: NSView {
             mouth.appendArc(withCenter: NSPoint(x: bodyOriginX + bodyWidth * 0.50 + headTilt * 0.15, y: bodyOriginY + bodyHeight * 0.61), radius: 10, startAngle: 25, endAngle: 155)
         } else if isWaiting {
             mouth.appendArc(withCenter: NSPoint(x: bodyOriginX + bodyWidth * 0.50 + headTilt * 0.15, y: bodyOriginY + bodyHeight * 0.59), radius: 8, startAngle: 15, endAngle: 165)
+        } else if isTender {
+            mouth.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.42 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.58))
+            mouth.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * 0.58 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.58),
+                controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.46 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.66),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.54 + headTilt * 0.2, y: bodyOriginY + bodyHeight * 0.66)
+            )
+        } else if isBursting {
+            mouth.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.40 + headTilt * 0.18, y: bodyOriginY + bodyHeight * 0.58))
+            mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.49 + headTilt * 0.18, y: bodyOriginY + bodyHeight * 0.63))
+            mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.58 + headTilt * 0.18, y: bodyOriginY + bodyHeight * 0.57))
         } else if isOffBeat {
             mouth.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.41 + headTilt * 0.3, y: bodyOriginY + bodyHeight * 0.59))
             mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.47 + headTilt * 0.3, y: bodyOriginY + bodyHeight * 0.56))
@@ -3094,6 +3154,8 @@ final class PetSceneView: NSView {
             mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.48, y: bodyOriginY + bodyHeight * 0.63))
             mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.56, y: bodyOriginY + bodyHeight * 0.56))
             mouth.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.64, y: bodyOriginY + bodyHeight * 0.61))
+        } else if isStuffy {
+            mouth.appendArc(withCenter: NSPoint(x: bodyOriginX + bodyWidth * 0.50, y: bodyOriginY + bodyHeight * 0.57), radius: 8, startAngle: 195, endAngle: 345)
         } else {
             mouth.appendArc(withCenter: NSPoint(x: bodyOriginX + bodyWidth * 0.50, y: bodyOriginY + bodyHeight * 0.55), radius: 12, startAngle: 200, endAngle: 340)
         }
@@ -3884,6 +3946,89 @@ final class PetSceneView: NSView {
                 ))
                 NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.70, alpha: 0.48 - Double(index) * 0.08).setFill()
                 crumb.fill()
+            }
+        }
+    }
+
+    func drawBurstingDrakeOverlay(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat, animationPhase: CGFloat, isRunning: Bool, isWaiting: Bool) {
+        let crestSwing = sin(animationPhase * 1.6) * 3
+        let leftCrest = NSBezierPath()
+        leftCrest.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.22, y: bodyOriginY + 8))
+        leftCrest.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.18, y: bodyOriginY - 18 - crestSwing))
+        leftCrest.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.32, y: bodyOriginY + 2))
+        leftCrest.close()
+        accent.withAlphaComponent(0.48).setFill()
+        leftCrest.fill()
+
+        let rightCrest = NSBezierPath()
+        rightCrest.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.78, y: bodyOriginY + 8))
+        rightCrest.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.82, y: bodyOriginY - 18 + crestSwing))
+        rightCrest.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.68, y: bodyOriginY + 2))
+        rightCrest.close()
+        rightCrest.fill()
+
+        for index in 0..<2 {
+            let wing = NSBezierPath()
+            let direction: CGFloat = index == 0 ? -1 : 1
+            wing.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.50, y: bodyOriginY + bodyHeight * 0.44))
+            wing.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * (0.50 + 0.22 * direction), y: bodyOriginY + bodyHeight * 0.72 + CGFloat(index) * 4),
+                controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * (0.50 + 0.10 * direction), y: bodyOriginY + bodyHeight * 0.30),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * (0.50 + 0.22 * direction), y: bodyOriginY + bodyHeight * 0.56)
+            )
+            wing.lineWidth = isRunning ? 3.2 : 2.4
+            accent.withAlphaComponent(isWaiting ? 0.18 : 0.26).setStroke()
+            wing.stroke()
+        }
+
+        let chestLine = NSBezierPath()
+        chestLine.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.50, y: bodyOriginY + bodyHeight * 0.52))
+        chestLine.line(to: NSPoint(x: bodyOriginX + bodyWidth * 0.50, y: bodyOriginY + bodyHeight * 0.80))
+        chestLine.lineWidth = 2
+        accent.withAlphaComponent(0.30).setStroke()
+        chestLine.stroke()
+    }
+
+    func drawClingSpriteOverlay(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat, animationPhase: CGFloat, isWaiting: Bool, isSnuggling: Bool) {
+        let cheekGlow = NSColor(calibratedRed: 1.0, green: 0.88, blue: 0.84, alpha: 0.36)
+        let pulse = abs(sin(animationPhase * 1.2))
+        let leftCheek = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.20,
+            y: bodyOriginY + bodyHeight * 0.42,
+            width: 14 * stageScale,
+            height: 10 * stageScale
+        ))
+        let rightCheek = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.62,
+            y: bodyOriginY + bodyHeight * 0.42,
+            width: 14 * stageScale,
+            height: 10 * stageScale
+        ))
+        cheekGlow.setFill()
+        leftCheek.fill()
+        rightCheek.fill()
+
+        let chest = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.26,
+            y: bodyOriginY + bodyHeight * 0.56,
+            width: bodyWidth * 0.48,
+            height: bodyHeight * 0.22
+        ))
+        NSColor.white.withAlphaComponent(0.22).setFill()
+        chest.fill()
+
+        if isWaiting || isSnuggling {
+            for index in 0..<2 {
+                let heart = NSBezierPath()
+                let hx = bodyOriginX - 6 + CGFloat(index) * 14
+                let hy = bodyOriginY + bodyHeight * 0.24 - pulse * CGFloat(4 + index * 2)
+                heart.move(to: NSPoint(x: hx, y: hy + 8))
+                heart.curve(to: NSPoint(x: hx - 6, y: hy + 2), controlPoint1: NSPoint(x: hx - 4, y: hy), controlPoint2: NSPoint(x: hx - 6, y: hy + 4))
+                heart.curve(to: NSPoint(x: hx, y: hy - 4), controlPoint1: NSPoint(x: hx - 6, y: hy - 2), controlPoint2: NSPoint(x: hx - 3, y: hy - 4))
+                heart.curve(to: NSPoint(x: hx + 6, y: hy + 2), controlPoint1: NSPoint(x: hx + 3, y: hy - 4), controlPoint2: NSPoint(x: hx + 6, y: hy - 2))
+                heart.curve(to: NSPoint(x: hx, y: hy + 8), controlPoint1: NSPoint(x: hx + 6, y: hy + 4), controlPoint2: NSPoint(x: hx + 4, y: hy))
+                accent.withAlphaComponent(0.26 - Double(index) * 0.05).setFill()
+                heart.fill()
             }
         }
     }
