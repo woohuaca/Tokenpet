@@ -2924,8 +2924,8 @@ final class PetSceneView: NSView {
         case "adult": stageScale = 1.08
         default: stageScale = 1.14
         }
-        let bodyWidthAdjust: CGFloat = (isTender ? -6 : (isStuffy ? 8 : (isBursting ? 4 : 0))) + identityVisual.bodyWidthBias
-        let bodyHeightAdjust: CGFloat = (isTender ? -2 : (isStuffy ? 4 : 0)) + identityVisual.bodyHeightBias
+        let bodyWidthAdjust: CGFloat = (isTender ? -6 : (isStuffy ? 16 : (isBursting ? 4 : 0))) + identityVisual.bodyWidthBias
+        let bodyHeightAdjust: CGFloat = (isTender ? -2 : (isStuffy ? 10 : 0)) + identityVisual.bodyHeightBias
 
         let shadowRect = NSRect(
             x: 62 - dash * 0.3 + impactShift * 0.4 + (isOffBeat ? 4 : 0),
@@ -2991,6 +2991,21 @@ final class PetSceneView: NSView {
         let body = NSBezierPath(roundedRect: NSRect(x: bodyOriginX, y: bodyOriginY, width: bodyWidth, height: bodyHeight), xRadius: 48 * stageScale, yRadius: 48 * stageScale)
         bodyColor.setFill()
         body.fill()
+
+        if isStuffy {
+            drawStuffyHamsterOverlay(
+                bodyOriginX: bodyOriginX,
+                bodyOriginY: bodyOriginY,
+                bodyWidth: bodyWidth,
+                bodyHeight: bodyHeight,
+                accent: accent,
+                bodyColor: bodyColor,
+                stageScale: stageScale,
+                animationPhase: animationPhase,
+                isWaiting: isWaiting,
+                isMealFeedback: isMealFeedback
+            )
+        }
 
         let tail = NSBezierPath()
         tail.move(to: NSPoint(x: bodyOriginX + bodyWidth - 15, y: bodyOriginY + bodyHeight * 0.66 + tailDrop * 0.3))
@@ -3773,6 +3788,103 @@ final class PetSceneView: NSView {
             accent.withAlphaComponent(0.10).setStroke()
             orbit.lineWidth = 1.2
             orbit.stroke()
+        }
+    }
+
+    func drawStuffyHamsterOverlay(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, bodyColor: NSColor, stageScale: CGFloat, animationPhase: CGFloat, isWaiting: Bool, isMealFeedback: Bool) {
+        let cheekColor = NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.76, alpha: 0.34)
+        let bellyColor = NSColor(calibratedRed: 1.0, green: 0.88, blue: 0.68, alpha: 0.24)
+        let tuck = abs(sin(animationPhase * 0.9))
+        let pawBob = sin(animationPhase * 1.1) * 2
+
+        let leftCheek = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.12,
+            y: bodyOriginY + bodyHeight * 0.36 + tuck * 2,
+            width: bodyWidth * 0.18,
+            height: bodyHeight * 0.18
+        ))
+        let rightCheek = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.70,
+            y: bodyOriginY + bodyHeight * 0.36 + tuck * 2,
+            width: bodyWidth * 0.18,
+            height: bodyHeight * 0.18
+        ))
+        cheekColor.setFill()
+        leftCheek.fill()
+        rightCheek.fill()
+
+        let belly = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.22,
+            y: bodyOriginY + bodyHeight * 0.54,
+            width: bodyWidth * 0.56,
+            height: bodyHeight * 0.28
+        ))
+        bellyColor.setFill()
+        belly.fill()
+
+        let leftPaw = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.39,
+            y: bodyOriginY + bodyHeight * 0.66 + pawBob,
+            width: 14 * stageScale,
+            height: 16 * stageScale
+        ), xRadius: 7, yRadius: 7)
+        let rightPaw = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.51,
+            y: bodyOriginY + bodyHeight * 0.66 - pawBob * 0.5,
+            width: 14 * stageScale,
+            height: 16 * stageScale
+        ), xRadius: 7, yRadius: 7)
+        NSColor.white.withAlphaComponent(0.26).setFill()
+        leftPaw.fill()
+        rightPaw.fill()
+
+        let grainCore = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.455,
+            y: bodyOriginY + bodyHeight * 0.68 + (isWaiting ? 2 : 0),
+            width: 10 * stageScale,
+            height: 13 * stageScale
+        ), xRadius: 5, yRadius: 5)
+        NSColor(calibratedRed: 1.0, green: 0.84, blue: 0.54, alpha: isMealFeedback ? 0.62 : 0.42).setFill()
+        grainCore.fill()
+
+        for index in 0..<3 {
+            let arc = NSBezierPath()
+            let y = bodyOriginY + bodyHeight * (0.70 + CGFloat(index) * 0.045)
+            arc.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.28, y: y))
+            arc.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * 0.72, y: y),
+                controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.40, y: y - 5 - CGFloat(index)),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.60, y: y + 5 + CGFloat(index))
+            )
+            arc.lineWidth = index == 0 ? 1.8 : 1.4
+            NSColor(calibratedRed: 0.92, green: 0.76, blue: 0.48, alpha: 0.14 - Double(index) * 0.03).setStroke()
+            arc.stroke()
+        }
+
+        if isWaiting {
+            let guardArc = NSBezierPath()
+            guardArc.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.34, y: bodyOriginY + bodyHeight * 0.62))
+            guardArc.curve(
+                to: NSPoint(x: bodyOriginX + bodyWidth * 0.66, y: bodyOriginY + bodyHeight * 0.62),
+                controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.42, y: bodyOriginY + bodyHeight * 0.56),
+                controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.58, y: bodyOriginY + bodyHeight * 0.56)
+            )
+            guardArc.lineWidth = 2
+            accent.withAlphaComponent(0.18).setStroke()
+            guardArc.stroke()
+        }
+
+        if isMealFeedback {
+            for index in 0..<3 {
+                let crumb = NSBezierPath(ovalIn: NSRect(
+                    x: bodyOriginX + bodyWidth * (0.34 + CGFloat(index) * 0.10),
+                    y: bodyOriginY + bodyHeight * 0.78 - CGFloat(index % 2) * 4 - tuck * 2,
+                    width: 4 + CGFloat(index),
+                    height: 4 + CGFloat(index)
+                ))
+                NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.70, alpha: 0.48 - Double(index) * 0.08).setFill()
+                crumb.fill()
+            }
         }
     }
 
