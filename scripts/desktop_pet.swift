@@ -1771,6 +1771,13 @@ func topSummaryGroup(_ groups: [String: TokenSpendSummaryGroup]) -> TokenSpendSu
     }.first
 }
 
+func topSummaryGroupEntry(_ groups: [String: TokenSpendSummaryGroup]) -> (String, TokenSpendSummaryGroup)? {
+    groups.sorted { left, right in
+        if left.value.realTokens == right.value.realTokens { return left.value.count > right.value.count }
+        return left.value.realTokens > right.value.realTokens
+    }.first
+}
+
 func tokenSpendSummaryLines(_ summary: TokenSpendSummary?) -> [String] {
     guard let summary else {
         return [
@@ -1790,6 +1797,212 @@ func tokenSpendSummaryLines(_ summary: TokenSpendSummary?) -> [String] {
         "长期结构：主食 \(allTop)，输入 \(compactTokenAmount(summary.all.inputTokens)) / 输出 \(compactTokenAmount(summary.all.outputTokens)) / 思考 \(compactTokenAmount(summary.all.reasoningTokens))",
         "汇总时间：\(compactLedgerTime(summary.updatedAt)) \(summary.timezone ?? "")"
     ]
+}
+
+func growthExplanationTodaySummary(_ summary: TokenSpendSummary?) -> [String] {
+    guard let summary else {
+        return [
+            "今日吞食摘要：今天的账本摘要还在生成。",
+            "等 bridge 刷新后，这里会告诉你它今天主要吃了什么。"
+        ]
+    }
+
+    guard summary.today.count > 0 else {
+        return [
+            "今日吞食摘要：今天它还没吃到新的 Token。",
+            "现在主要还在消化前面的库存和你们之前攒下来的关系节奏。"
+        ]
+    }
+
+    let taskEntry = topSummaryGroupEntry(summary.today.byTaskType)
+    let qualityEntry = topSummaryGroupEntry(summary.today.byQuality)
+    let taskKey = taskEntry?.0 ?? "coding"
+    let taskLabel = taskEntry?.1.label ?? taskTitle(for: taskKey)
+    let qualityKey = qualityEntry?.0 ?? "solid"
+    let qualityLabel = qualityEntry?.1.label ?? compactQualityLabel(qualityKey)
+    let mainFood = foodVariantName(taskType: taskKey, quality: qualityKey)
+
+    return [
+        "今日吞食摘要：今天它主要吃的是\(taskLabel)\(qualityLabel)粮，已经吞了 \(compactTokenAmount(summary.today.realTokens)) Token，转出 \(compactTokenAmount(summary.today.petEnergy)) 粮值。",
+        "主食最像\(mainFood)，说明这几轮最在主导它的，还是你今天的\(taskLabel)工作。"
+    ]
+}
+
+func growthExplanationMetabolism(_ state: PetState) -> [String] {
+    let phase = growthBalanceProfile(state)
+    let inventoryLoad = inventoryServingCount(state)
+
+    switch phase.title {
+    case "压仓":
+        return [
+            "代谢结果：这一轮更多长成了仓压和躁劲，粮进得快，但吸收开始发胀。",
+            "它现在仓里有 \(inventoryLoad) 份粮，残渣 \(Int(state.residue))，所以会更想先消化，而不是一直猛长。"
+        ]
+    case "亢奋":
+        return [
+            "代谢结果：这一轮更多转成了活力和长势，整只会更有冲劲，也更容易躁起来。",
+            "现在饱腹 \(Int(state.satiety))、活力 \(Int(state.energy))，说明它吃得足，长得快，但情绪也更容易被点燃。"
+        ]
+    case "节制":
+        return [
+            "代谢结果：这一轮更多转成了亲和和细腻感，长得慢一点，但关系会更熟。",
+            "它现在存粮不多、吃得更克制，所以虽然长势不猛，却会更在意你怎么回应它。"
+        ]
+    default:
+        return [
+            "代谢结果：这一轮转化比较均衡，长势、活力和关系都在稳稳往前走。",
+            "它没有明显压仓，也没有明显透支，所以现在最接近一只被稳定养着的状态。"
+        ]
+    }
+}
+
+func growthExplanationTendency(_ state: PetState) -> [String] {
+    let tendency = dominantGrowthTendency(state)
+    let phase = growthBalanceProfile(state)
+    return [
+        "当前长势判断：它现在更偏\(tendency.title)。",
+        "最近这几轮的代谢底色是“\(phase.title)”，所以它会慢慢长成\(tendency.note)。"
+    ]
+}
+
+func growthExplanationEmotion(_ state: PetState) -> [String] {
+    if isBirthBondPending(state) {
+        return [
+            "当前情绪原因：它现在还在认你。",
+            "不是普通待机，而是第一段关系还没建立好，所以它会更想先记住你的手感。"
+        ]
+    }
+
+    let requestProfile = interactionRequestProfile(state)
+    let ignoreLevel = currentRequestIgnoreLevel(state)
+    if let request = state.currentRequest {
+        if ignoreLevel >= 2 {
+            return [
+                "当前情绪原因：它刚刚等你等久了，已经把期待收回去一点。",
+                "它本来想“\(compactPetPhrase(request))”，但两轮没接住，所以现在会更闷、更慢热。"
+            ]
+        }
+        if ignoreLevel == 1 {
+            return [
+                "当前情绪原因：它已经等过你一轮，还没完全放弃。",
+                "它现在还是想“\(compactPetPhrase(request))”，只是比刚开口的时候更小心一点。"
+            ]
+        }
+        if requestProfile.actionable {
+            return [
+                "当前情绪原因：它现在在认真等你回应。",
+                "互动能量已经攒够了，所以它会主动把“\(compactPetPhrase(request))”摆到你面前。"
+            ]
+        }
+        return [
+            "当前情绪原因：它现在有点惦记你。",
+            "它不是随便晃，而是在用自己的方式提醒你，它还想继续这轮相处。"
+        ]
+    }
+
+    switch deriveMoodTag(state) {
+    case "hungry":
+        return [
+            "当前情绪原因：它现在更像在饿着等下一口真粮。",
+            "不是脾气不好，而是这一轮消化得差不多了，新的能量还没续上。"
+        ]
+    case "sleepy":
+        return [
+            "当前情绪原因：它现在有点困。",
+            "活力偏低，说明这几轮的长势把劲用掉了，它更想先缓一缓。"
+        ]
+    case "glitched":
+        return [
+            "当前情绪原因：它现在有点卡壳。",
+            "残渣和毒性偏高，所以它会显得别扭，不太像平时那样顺着你。"
+        ]
+    case "joyful":
+        return [
+            "当前情绪原因：它现在是舒服又愿意靠近的。",
+            "这通常说明近期的粮食结构和你的回应节奏，都正好养在它喜欢的位置上。"
+        ]
+    case "sick":
+        return [
+            "当前情绪原因：它现在不太舒服。",
+            "清洁和健康被拖下来了，所以它会先表现出抗拒或蔫一点的状态。"
+        ]
+    default:
+        return [
+            "当前情绪原因：它现在整体是稳的。",
+            "没有特别强的饥饿、躁动或失落，所以更像在安静等下一次自然互动。"
+        ]
+    }
+}
+
+func growthExplanationNextStep(_ state: PetState) -> [String] {
+    let phase = growthBalanceProfile(state)
+
+    if isBirthBondPending(state) {
+        return [
+            "下一步建议：先轻拍一次。",
+            "现在最重要的不是喂更多，而是让它先把你的手感记成第一段关系。"
+        ]
+    }
+
+    if state.currentRequest != nil && interactionRequestProfile(state).actionable {
+        return [
+            "下一步建议：接它这一拍。",
+            "它已经把劲攒出来了，这时候回应，最容易让它觉得你真的在听它。"
+        ]
+    }
+
+    if phase.title == "压仓" || state.residue > 45 || state.toxicity > 60 {
+        return [
+            "下一步建议：先别连续猛喂，让它自己消化一会儿。",
+            "这一轮更需要收仓和整理，不然它会越来越胀，也更容易把情绪养毛。"
+        ]
+    }
+
+    if deriveMoodTag(state) == "hungry" || state.satiety < 38 {
+        if !normalizedInventory(state).isEmpty {
+            return [
+                "下一步建议：先让它吃一口库存粮。",
+                "现在补一小口，比直接猛拍更容易把状态接回舒服的位置。"
+            ]
+        }
+        return [
+            "下一步建议：先继续做一轮高质量任务给它补粮。",
+            "它现在缺的不是安慰，而是一口真正能转成养分的 Token。"
+        ]
+    }
+
+    if deriveMoodTag(state) == "sleepy" || state.energy < 26 {
+        return [
+            "下一步建议：先让它缓一缓，再互动。",
+            "它现在更像需要恢复，不适合立刻连续拍很多下。"
+        ]
+    }
+
+    if wantsPetting(state) {
+        return [
+            "下一步建议：给它一记轻拍或顺手一拍。",
+            "它现在最需要的是被接住，不是更多说明，也不是完全被晾着。"
+        ]
+    }
+
+    return [
+        "下一步建议：继续稳定做事，让它沿着这轮长势再长一段。",
+        "现在不用刻意刷最优解，只要保持这几轮的节奏，它就会继续把结果长进自己身体里。"
+    ]
+}
+
+func growthExplanationLines(state: PetState, summary: TokenSpendSummary?) -> [String] {
+    var lines: [String] = []
+    lines.append(contentsOf: growthExplanationTodaySummary(summary))
+    lines.append("")
+    lines.append(contentsOf: growthExplanationMetabolism(state))
+    lines.append("")
+    lines.append(contentsOf: growthExplanationTendency(state))
+    lines.append("")
+    lines.append(contentsOf: growthExplanationEmotion(state))
+    lines.append("")
+    lines.append(contentsOf: growthExplanationNextStep(state))
+    return lines
 }
 
 func inventoryServingCount(_ state: PetState) -> Int {
@@ -3812,6 +4025,7 @@ final class PetInfoViewController: NSViewController {
         let traits = generatedTraitProfile(state)
         let habits = generatedHabitProfile(state)
         let summaryLines = tokenSpendSummaryLines(summary)
+        let explanationLines = growthExplanationLines(state: state, summary: summary)
         let unlocked = unlockedFormsValue(state)
         let metabolism = metabolismPhase(state)
         let growthTendency = dominantGrowthTendency(state)
@@ -3868,6 +4082,9 @@ final class PetInfoViewController: NSViewController {
             "自动吃粮：\(config.autoEatEnabled ? "开启" : "关闭")",
             "Codex 来源：\(config.codexSourceEnabled ? "开启" : "关闭")",
             "外部标准来源：\(config.externalSourceEnabled ? "开启" : "关闭")",
+            "",
+            "【为什么它现在是这样】",
+            explanationLines.joined(separator: "\n"),
             "",
             "完整 Token 账本汇总：",
             summaryLines.joined(separator: "\n"),

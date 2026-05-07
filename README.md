@@ -233,6 +233,10 @@ V1 当前聚焦四件事：
   针对短周期重复启停回归的第三轮验证记录
 - `docs/v1-release-plan.md`
   当前版本路线、发布门槛与后续演进顺序
+- `docs/v1-2-growth-explanation-requirement-package.md`
+  `v1.2.x` 生长养成解释面板需求包
+- `docs/v1-2-growth-explanation-task-board.md`
+  `v1.2.x` 生长养成解释面板开发任务清单
 - `docs/v1-next-iteration-focus.md`
   `吞金兽 Token Pet` 下一阶段精进方向：完整账本、生长养成、情绪价值、调试验证和分发体验
 - `docs/v1-core-loop-optimization-plan.md`
