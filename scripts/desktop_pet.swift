@@ -2992,6 +2992,18 @@ final class PetSceneView: NSView {
         let body = NSBezierPath(roundedRect: NSRect(x: bodyOriginX, y: bodyOriginY, width: bodyWidth, height: bodyHeight), xRadius: bodyCornerRadius, yRadius: bodyCornerRadius)
         bodyColor.setFill()
         body.fill()
+        drawDesignerToyFinish(
+            bodyOriginX: bodyOriginX,
+            bodyOriginY: bodyOriginY,
+            bodyWidth: bodyWidth,
+            bodyHeight: bodyHeight,
+            accent: accent,
+            bodyColor: bodyColor,
+            stageScale: stageScale,
+            isTender: isTender,
+            isBursting: isBursting,
+            isStuffy: isStuffy
+        )
 
         if isStuffy {
             drawStuffyHamsterOverlay(
@@ -3110,6 +3122,18 @@ final class PetSceneView: NSView {
                 NSBezierPath(ovalIn: NSRect(x: rightEyeX + 2, y: rightEyeY + 2, width: 3, height: 4)).fill()
                 NSColor(calibratedRed: 0.15, green: 0.12, blue: 0.10, alpha: 1.0).setFill()
             }
+        }
+
+        if isBursting {
+            let visorColor = NSColor(calibratedRed: 0.78, green: 0.95, blue: 1.0, alpha: 0.56)
+            visorColor.setFill()
+            NSBezierPath(roundedRect: NSRect(x: leftEyeX + 1, y: leftEyeY + 4, width: eyeWidth - 2, height: 2), xRadius: 1, yRadius: 1).fill()
+            NSBezierPath(roundedRect: NSRect(x: rightEyeX + 1, y: rightEyeY + 4, width: eyeWidth - 2, height: 2), xRadius: 1, yRadius: 1).fill()
+        } else if isStuffy {
+            let meterColor = NSColor(calibratedRed: 1.0, green: 0.93, blue: 0.70, alpha: 0.46)
+            meterColor.setFill()
+            NSBezierPath(roundedRect: NSRect(x: leftEyeX + 2, y: leftEyeY + 5, width: 3, height: 2), xRadius: 1, yRadius: 1).fill()
+            NSBezierPath(roundedRect: NSRect(x: rightEyeX + 5, y: rightEyeY + 5, width: 3, height: 2), xRadius: 1, yRadius: 1).fill()
         }
 
         if !blink && isBursting {
@@ -3948,6 +3972,17 @@ final class PetSceneView: NSView {
                 crumb.fill()
             }
         }
+
+        for index in 0..<3 {
+            let segment = NSBezierPath(roundedRect: NSRect(
+                x: bodyOriginX + bodyWidth * 0.40 + CGFloat(index) * 9,
+                y: bodyOriginY + bodyHeight * 0.61,
+                width: 7,
+                height: 4
+            ), xRadius: 2, yRadius: 2)
+            NSColor(calibratedRed: 1.0, green: 0.94, blue: 0.74, alpha: 0.32 + Double(index) * 0.06).setFill()
+            segment.fill()
+        }
     }
 
     func drawBurstingDrakeOverlay(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat, animationPhase: CGFloat, isRunning: Bool, isWaiting: Bool) {
@@ -3987,6 +4022,30 @@ final class PetSceneView: NSView {
         chestLine.lineWidth = 2
         accent.withAlphaComponent(0.30).setStroke()
         chestLine.stroke()
+
+        let chestCore = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.45,
+            y: bodyOriginY + bodyHeight * 0.60,
+            width: 12 * stageScale,
+            height: 18 * stageScale
+        ), xRadius: 4, yRadius: 4)
+        NSColor(calibratedRed: 0.80, green: 0.97, blue: 1.0, alpha: 0.42).setFill()
+        chestCore.fill()
+
+        let pulse = abs(sin(animationPhase * 1.7))
+        let hex = NSBezierPath()
+        let centerX = bodyOriginX + bodyWidth * 0.50
+        let centerY = bodyOriginY + bodyHeight * 0.69
+        let radius = 12 + pulse * 3
+        for index in 0..<6 {
+            let angle = CGFloat(index) * (.pi / 3) - .pi / 6
+            let point = NSPoint(x: centerX + cos(angle) * radius, y: centerY + sin(angle) * radius)
+            if index == 0 { hex.move(to: point) } else { hex.line(to: point) }
+        }
+        hex.close()
+        NSColor(calibratedRed: 0.76, green: 0.95, blue: 1.0, alpha: 0.22).setStroke()
+        hex.lineWidth = 1.6
+        hex.stroke()
     }
 
     func drawClingSpriteOverlay(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat, animationPhase: CGFloat, isWaiting: Bool, isSnuggling: Bool) {
@@ -4031,6 +4090,80 @@ final class PetSceneView: NSView {
                 heart.fill()
             }
         }
+
+        let signalRing = NSBezierPath(ovalIn: NSRect(
+            x: bodyOriginX + bodyWidth * 0.18,
+            y: bodyOriginY + bodyHeight * 0.14,
+            width: bodyWidth * 0.64,
+            height: bodyHeight * 0.18
+        ))
+        accent.withAlphaComponent(0.14).setStroke()
+        signalRing.lineWidth = 1.4
+        signalRing.stroke()
+
+        for index in 0..<3 {
+            let chip = NSBezierPath(roundedRect: NSRect(
+                x: bodyOriginX + bodyWidth * 0.38 + CGFloat(index) * 8,
+                y: bodyOriginY + bodyHeight * 0.18,
+                width: 6,
+                height: 4
+            ), xRadius: 2, yRadius: 2)
+            NSColor.white.withAlphaComponent(0.34 + Double(index) * 0.08).setFill()
+            chip.fill()
+        }
+    }
+
+    func drawDesignerToyFinish(bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, bodyColor: NSColor, stageScale: CGFloat, isTender: Bool, isBursting: Bool, isStuffy: Bool) {
+        let gloss = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.16,
+            y: bodyOriginY + bodyHeight * 0.10,
+            width: bodyWidth * (isBursting ? 0.26 : 0.34),
+            height: bodyHeight * (isTender ? 0.18 : 0.16)
+        ), xRadius: 12, yRadius: 12)
+        NSColor.white.withAlphaComponent(isTender ? 0.30 : 0.22).setFill()
+        gloss.fill()
+
+        let sideGloss = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.70,
+            y: bodyOriginY + bodyHeight * 0.18,
+            width: bodyWidth * 0.08,
+            height: bodyHeight * 0.28
+        ), xRadius: 6, yRadius: 6)
+        NSColor.white.withAlphaComponent(0.12).setFill()
+        sideGloss.fill()
+
+        let seam = NSBezierPath()
+        seam.move(to: NSPoint(x: bodyOriginX + bodyWidth * 0.18, y: bodyOriginY + bodyHeight * 0.86))
+        seam.curve(
+            to: NSPoint(x: bodyOriginX + bodyWidth * 0.82, y: bodyOriginY + bodyHeight * 0.86),
+            controlPoint1: NSPoint(x: bodyOriginX + bodyWidth * 0.34, y: bodyOriginY + bodyHeight * 0.80),
+            controlPoint2: NSPoint(x: bodyOriginX + bodyWidth * 0.66, y: bodyOriginY + bodyHeight * 0.80)
+        )
+        let seamColor: NSColor
+        if isBursting {
+            seamColor = NSColor(calibratedRed: 0.72, green: 0.94, blue: 1.0, alpha: 0.18)
+        } else if isStuffy {
+            seamColor = NSColor(calibratedRed: 1.0, green: 0.90, blue: 0.68, alpha: 0.18)
+        } else if isTender {
+            seamColor = NSColor(calibratedRed: 1.0, green: 0.88, blue: 0.88, alpha: 0.18)
+        } else {
+            seamColor = bodyColor.withAlphaComponent(0.14)
+        }
+        seamColor.setStroke()
+        seam.lineWidth = 1.4
+        seam.stroke()
+
+        let chipPlate = NSBezierPath(roundedRect: NSRect(
+            x: bodyOriginX + bodyWidth * 0.08,
+            y: bodyOriginY + bodyHeight * 0.28,
+            width: 12 * stageScale,
+            height: 18 * stageScale
+        ), xRadius: 4, yRadius: 4)
+        accent.withAlphaComponent(0.14).setFill()
+        chipPlate.fill()
+        NSColor.white.withAlphaComponent(0.20).setStroke()
+        chipPlate.lineWidth = 1
+        chipPlate.stroke()
     }
 
     func drawFormOverlay(form: String, bodyOriginX: CGFloat, bodyOriginY: CGFloat, bodyWidth: CGFloat, bodyHeight: CGFloat, accent: NSColor, stageScale: CGFloat) {
