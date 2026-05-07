@@ -4170,6 +4170,7 @@ final class PetContainerView: NSView {
     var showInfoHandler: (() -> Void)?
     var toggleAutoEatHandler: (() -> Void)?
     var debugFeedbackHandler: ((String) -> Void)?
+    var debugShapeHandler: ((String) -> Void)?
 
     override var isFlipped: Bool { true }
 
@@ -4289,6 +4290,22 @@ final class PetContainerView: NSView {
         contextMenu.setSubmenu(debugMenu, for: debugRoot)
         contextMenu.addItem(debugRoot)
 
+        let shapeDebugRoot = NSMenuItem(title: "调试形象切换", action: nil, keyEquivalent: "")
+        let shapeDebugMenu = NSMenu()
+        [
+            ("仓鼠仓压型", "stuffy_hamster"),
+            ("小龙猛长型", "burst_drake"),
+            ("贴贴精灵型", "cling_sprite"),
+            ("恢复自然状态", "reset_natural")
+        ].forEach { title, key in
+            let item = NSMenuItem(title: title, action: #selector(triggerDebugShape(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = key
+            shapeDebugMenu.addItem(item)
+        }
+        contextMenu.setSubmenu(shapeDebugMenu, for: shapeDebugRoot)
+        contextMenu.addItem(shapeDebugRoot)
+
         contextMenu.addItem(.separator())
         let quit = NSMenuItem(title: "退出桌宠", action: #selector(quitPet), keyEquivalent: "")
         quit.target = self
@@ -4319,6 +4336,10 @@ final class PetContainerView: NSView {
     @objc func triggerDebugFeedback(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
         debugFeedbackHandler?(key)
+    }
+    @objc func triggerDebugShape(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        debugShapeHandler?(key)
     }
     @objc func quitPet() { NSApp.terminate(nil) }
 }
@@ -4569,6 +4590,7 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         contentView.showInfoHandler = { [weak self] in self?.showInfoPanel() }
         contentView.toggleAutoEatHandler = { [weak self] in self?.toggleAutoEat() }
         contentView.debugFeedbackHandler = { [weak self] key in self?.triggerDebugFeedback(key) }
+        contentView.debugShapeHandler = { [weak self] key in self?.triggerDebugShape(key) }
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -4803,6 +4825,116 @@ final class PetAppController: NSObject, NSApplicationDelegate {
         _ = setActiveFeedback(&state, key: key, source: "debug", priority: 100, duration: 4.5, now: now, resolvedOutcome: "debug", force: true)
         state.lastCareSummary = message
         refresh(message: message)
+    }
+
+    func triggerDebugShape(_ key: String) {
+        let now = Date().timeIntervalSince1970
+        let message: String
+
+        switch key {
+        case "stuffy_hamster":
+            state.growthPhaseImprint = ["节制": 10, "舒展": 14, "亢奋": 8, "压仓": 96]
+            state.satiety = 88
+            state.energy = 60
+            state.focus = 48
+            state.mood = 46
+            state.hygiene = 54
+            state.health = 58
+            state.bond = max(state.bond, 42)
+            state.toxicity = 78
+            state.residue = 62
+            state.pettingNeed = 28
+            state.affinityEnergy = 14
+            state.agitationEnergy = 36
+            state.archetypeScore = [
+                "builder": 8,
+                "scholar": 7,
+                "captain": 6,
+                "social": 8,
+                "chaos": 7
+            ]
+            state.currentActivity = "护着粮仓慢慢整理肚里那股闷劲"
+            state.currentRequest = "想先把肚里一点闷劲拍松"
+            state.currentRequestAt = now
+            state.currentRequestIgnoreLevel = 0
+            message = "调试：已切到仓鼠仓压型。现在它会更圆、更贴地，也更像在护着粮仓。"
+        case "burst_drake":
+            state.growthPhaseImprint = ["节制": 8, "舒展": 20, "亢奋": 98, "压仓": 12]
+            state.satiety = 90
+            state.energy = 94
+            state.focus = 68
+            state.mood = 76
+            state.hygiene = 70
+            state.health = 74
+            state.bond = max(state.bond, 58)
+            state.toxicity = 22
+            state.residue = 16
+            state.pettingNeed = 38
+            state.affinityEnergy = 28
+            state.agitationEnergy = 34
+            state.archetypeScore = [
+                "builder": 14,
+                "scholar": 8,
+                "captain": 20,
+                "social": 6,
+                "chaos": 10
+            ]
+            state.currentActivity = "巡着桌边蓄下一股更亮的劲"
+            state.currentRequest = "想接你一记利落的中拍"
+            state.currentRequestAt = now
+            state.currentRequestIgnoreLevel = 0
+            state.unlockedForms = Array(Set(unlockedFormsValue(state) + ["captain"]))
+            message = "调试：已切到小龙猛长型。现在它会更前倾、更有冲劲，也更像在蓄力。"
+        case "cling_sprite":
+            state.growthPhaseImprint = ["节制": 102, "舒展": 18, "亢奋": 6, "压仓": 4]
+            state.satiety = 44
+            state.energy = 58
+            state.focus = 56
+            state.mood = 88
+            state.hygiene = 74
+            state.health = 78
+            state.bond = max(state.bond, 90)
+            state.toxicity = 8
+            state.residue = 6
+            state.pettingNeed = 74
+            state.affinityEnergy = 42
+            state.agitationEnergy = 6
+            state.archetypeScore = [
+                "builder": 4,
+                "scholar": 6,
+                "captain": 5,
+                "social": 24,
+                "chaos": 2
+            ]
+            state.currentActivity = "贴着边轻轻等你回头理它一下"
+            state.currentRequest = "想被你轻轻碰一下就好"
+            state.currentRequestAt = now
+            state.currentRequestIgnoreLevel = 0
+            state.unlockedForms = Array(Set(unlockedFormsValue(state) + ["social"]))
+            message = "调试：已切到贴贴精灵型。现在它会更软、更亲人，也更容易贴边等你。"
+        case "reset_natural":
+            state.growthPhaseImprint = defaultGrowthPhaseImprint()
+            state.toxicity = clamp(state.toxicity, minimum: 0, maximum: 24)
+            state.residue = clamp(state.residue, minimum: 0, maximum: 18)
+            state.energy = clamp(state.energy, minimum: 48, maximum: 68)
+            state.satiety = clamp(state.satiety, minimum: 46, maximum: 68)
+            state.mood = clamp(state.mood, minimum: 54, maximum: 72)
+            state.hygiene = clamp(state.hygiene, minimum: 58, maximum: 82)
+            state.health = clamp(state.health, minimum: 60, maximum: 82)
+            state.pettingNeed = clamp(currentPettingNeed(state), minimum: 14, maximum: 36)
+            state.affinityEnergy = clamp(currentAffinityEnergy(state), minimum: 6, maximum: 18)
+            state.agitationEnergy = clamp(currentAgitationEnergy(state), minimum: 2, maximum: 12)
+            state.currentActivity = "慢悠悠巡桌"
+            state.currentRequest = nil
+            state.currentRequestAt = nil
+            state.currentRequestIgnoreLevel = 0
+            message = "调试：已恢复到自然状态。它会重新按当前真实喂养情况慢慢长。"
+        default:
+            message = "调试：未知形象 \(key)"
+        }
+
+        state.lastCareSummary = message
+        refresh(message: syncGrowthBalancePhase(&state) ?? message)
     }
 
     func backgroundTick() {
